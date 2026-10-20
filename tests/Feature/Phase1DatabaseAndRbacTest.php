@@ -17,31 +17,38 @@ class Phase1DatabaseAndRbacTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
-        // Verify Users for all 5 roles
-        $this->assertDatabaseCount('users', 5);
+        // Verify Users for all roles (including demo)
+        $this->assertDatabaseCount('users', 6);
         $this->assertDatabaseHas('users', ['email' => 'admin@tbi.com', 'role' => 'admin']);
+        $this->assertDatabaseHas('users', ['email' => 'demo@tbi.com', 'role' => 'demo']);
         $this->assertDatabaseHas('users', ['email' => 'kasir@tbi.com', 'role' => 'kasir_logistik']);
         $this->assertDatabaseHas('users', ['email' => 'gudang@tbi.com', 'role' => 'petugas_gudang']);
         $this->assertDatabaseHas('users', ['email' => 'operator@tbi.com', 'role' => 'operator_produksi']);
         $this->assertDatabaseHas('users', ['email' => 'surveyor@tbi.com', 'role' => 'surveyor_opname']);
 
-        // Verify 10 Materials
-        $this->assertDatabaseCount('materials', 10);
+        // Verify 9 Materials (Konsolidasi Pasir Palu Ex-Lariang & Tibo, Additive Kg & SBTJM2 Liter)
+        $this->assertDatabaseCount('materials', 9);
         $this->assertDatabaseHas('materials', ['name' => 'Semen', 'unit' => 'Kg']);
         $this->assertDatabaseHas('materials', ['name' => 'Pasir Palu', 'unit' => 'Kg']);
         $this->assertDatabaseHas('materials', ['name' => 'Batu Besar 2/3', 'unit' => 'Kg']);
+        $this->assertDatabaseHas('materials', ['name' => 'Additive', 'unit' => 'Kg']);
+        $this->assertDatabaseHas('materials', ['name' => 'SBTJM2', 'unit' => 'Liter']);
         $this->assertDatabaseHas('materials', ['name' => 'Dexlite', 'unit' => 'Liter']);
+        $this->assertDatabaseMissing('materials', ['name' => 'Pasir Lariang']);
+        $this->assertDatabaseMissing('materials', ['name' => 'Pasir Tibo']);
 
-        // Verify 28 Suppliers
-        $this->assertDatabaseCount('suppliers', 28);
+        // Verify 21 Normalized & Deduplicated Suppliers (including TBI Plant)
+        $this->assertDatabaseCount('suppliers', 21);
         $this->assertDatabaseHas('suppliers', ['name' => 'WAN SHANG( CONTAINER DARI CHINA)']);
+        $this->assertDatabaseHas('suppliers', ['name' => 'PT. BALQIS REZA REVOLO']);
+        $this->assertDatabaseHas('suppliers', ['name' => 'TBI Plant']);
 
         // Verify Customers
         $this->assertGreaterThanOrEqual(20, Customer::count());
         $this->assertDatabaseHas('customers', ['name' => 'PT Recta Construction']);
 
-        // Verify 24 Master Job Mixes
-        $this->assertDatabaseCount('job_mixes', 24);
+        // Verify Master Job Mixes (24 baseline + 18 operational standards = 42)
+        $this->assertDatabaseCount('job_mixes', 42);
         $this->assertDatabaseHas('job_mixes', [
             'mutu_code' => 'K300 / C',
             'waste_factor' => '1.0500',

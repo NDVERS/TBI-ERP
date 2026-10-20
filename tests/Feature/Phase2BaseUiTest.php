@@ -64,4 +64,66 @@ class Phase2BaseUiTest extends TestCase
             ->assertSee('Budi Surveyor')
             ->assertSee('Surveyor Lapangan');
     }
+
+    public function test_guest_and_non_admin_cannot_see_density_in_drawer_or_json_payload(): void
+    {
+        Material::create([
+            'name' => 'Pasir Palu Khusus',
+            'unit' => 'Kg',
+            'density_kg_m3' => 1658.50,
+            'initial_stock_kg' => 50000.00,
+        ]);
+
+        $operator = User::factory()->create(['role' => 'operator_produksi']);
+
+        // 1. Guest access
+        $guestResponse = $this->get('/');
+        $guestResponse->assertStatus(200);
+        $guestResponse->assertSee('Pasir Palu Khusus');
+        $guestResponse->assertSee('Terkunci (Admin Only)');
+        $guestResponse->assertDontSee('1.658,50');
+        $guestResponse->assertDontSee('1658.5');
+
+        // 2. Non-admin operator access
+        $operatorResponse = $this->actingAs($operator)->get('/');
+        $operatorResponse->assertStatus(200);
+        $operatorResponse->assertSee('Pasir Palu Khusus');
+        $operatorResponse->assertSee('Terkunci (Admin Only)');
+        $operatorResponse->assertDontSee('1.658,50');
+        $operatorResponse->assertDontSee('1658.5');
+    }
+
+    public function test_admin_can_see_density_in_table_and_drawer_payload(): void
+    {
+        Material::create([
+            'name' => 'Split Khusus Admin',
+            'unit' => 'Kg',
+            'density_kg_m3' => 1517.25,
+            'initial_stock_kg' => 75000.00,
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $adminResponse = $this->actingAs($admin)->get('/');
+        $adminResponse->assertStatus(200);
+        $adminResponse->assertSee('Split Khusus Admin');
+        $adminResponse->assertSee('1.517,25');
+    }
+
+    public function test_hybrid_responsive_table_and_drawer_markup_are_rendered(): void
+    {
+        Material::create([
+            'name' => 'Semen Padang',
+            'unit' => 'Kg',
+            'density_kg_m3' => 1000.00,
+            'initial_stock_kg' => 10000.00,
+        ]);
+
+        $response = $this->get('/');
+        $response->assertStatus(200);
+        $response->assertSee('drawerOpen');
+        $response->assertSee('openMaterial(');
+        $response->assertSee('hidden md:table-cell', false);
+        $response->assertSee('Spesifikasi teknis dan stok operasional batching plant');
+    }
 }

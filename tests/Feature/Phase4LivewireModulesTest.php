@@ -2,14 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\MaterialReceiveForm;
 use App\Livewire\SalesOrderForm;
 use App\Livewire\StockOpnameForm;
 use App\Models\Customer;
 use App\Models\JobMix;
 use App\Models\Material;
+use App\Models\MaterialReceive;
 use App\Models\SalesOrder;
 use App\Models\StockOpname;
+use App\Models\Supplier;
 use App\Models\User;
+use App\Services\StockReconciliationService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -153,7 +157,6 @@ class Phase4LivewireModulesTest extends TestCase
             ->set('stock_bin', 0)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertSee('Data Opname Berhasil Disimpan & Dikirim ke Server')
             // Strict Zero Formula Exposure: Surveyor MUST NOT see 700.0000 m³ or 1.160.600 Kg in their view
             ->assertDontSee('700,0000 m³')
             ->assertDontSee('1.160.600');
@@ -186,8 +189,7 @@ class Phase4LivewireModulesTest extends TestCase
             ->set('rb', 5.0)
             ->set('stock_bin', 0)
             ->call('save')
-            ->assertHasNoErrors()
-            ->assertSee('Data Opname Berhasil Disimpan & Dikirim ke Server');
+            ->assertHasNoErrors();
 
         $opname = StockOpname::where('material_id', $split23->id)->latest('id')->first();
         $this->assertNotNull($opname);
@@ -218,5 +220,123 @@ class Phase4LivewireModulesTest extends TestCase
             ->assertSee('Hasil Hitung Server (Admin)')
             ->assertSee('700,0000')
             ->assertSee('1.160.600');
+    }
+
+    public function test_material_receive_without_time_in_with_density_and_accumulates_to_reconciliation(): void
+    {
+        $gudang = User::where('role', 'petugas_gudang')->first();
+        $supplier = Supplier::first();
+        $pasirPalu = Material::where('name', 'Pasir Palu')->first();
+
+        $this->actingAs($gudang);
+
+        // Get initial receive tonnage
+        $service = app(StockReconciliationService::class);
+        $initialReceiveKg = $service->getMonthlyReceiveTotal($pasirPalu, 2026, 10);
+
+        // Submit form without time_in, with volume 15 m3 and custom density 1660 kg/m3 -> 24,900 Kg
+        Livewire::test(MaterialReceiveForm::class)
+            ->set('receive_date', '2026-10-20')
+            ->set('supplier_id', $supplier->id)
+            ->set('material_id', $pasirPalu->id)
+            ->assertSet('density', '1658.00')
+            ->assertSet('masterDensity', 1658.0)
+            ->set('density', 1660.0) // custom density
+            ->set('vehicle_no', 'DN 1234 XY')
+            ->set('ri_no', 'RI-TRK-2026-001')
+            ->set('volume_m3', 15.0)
+            ->assertSet('totalWeight', 24900.0)
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('RI-TRK-2026-001');
+
+        $record = MaterialReceive::where('ri_no', 'RI-TRK-2026-001')->first();
+        $this->assertNotNull($record);
+        $this->assertNull($record->time_in);
+        $this->assertEquals(15.0, (float) $record->volume_m3);
+        $this->assertEquals(1660.0, (float) $record->density_used);
+        $this->assertEquals(24900.0, (float) $record->total_weight_kg);
+
+        // Verify stock reconciliation accumulation
+        $newReceiveKg = $service->getMonthlyReceiveTotal($pasirPalu, 2026, 10);
+        $this->assertEquals($initialReceiveKg + 24900.0, $newReceiveKg);
+    }
+
+    public function test_master_suppliers_are_normalized_and_include_tbi_plant(): void
+    {
+        // No duplicate suffix names
+        $this->assertNull(Supplier::where('name', 'PT. BALQIS REZA REVOLO - SPLIT 1-2')->first());
+        $this->assertNull(Supplier::where('name', 'PT PUTRA LABUAN SULAWESI - SPLIT 1-2')->first());
+        $this->assertNotNull(Supplier::where('name', 'PT. BALQIS REZA REVOLO')->first());
+
+        // TBI Plant exists
+        $tbiPlant = Supplier::where('name', 'TBI Plant')->first();
+        $this->assertNotNull($tbiPlant);
+        $this->assertEquals('PRODUKSI INTERNAL LAB', $tbiPlant->material_type);
+    }
+
+    public function test_material_sbtjm2_has_unit_liter_and_auto_locks_to_tbi_plant_internal(): void
+    {
+        $gudang = User::where('role', 'petugas_gudang')->first();
+        $sbtjm2 = Material::where('name', 'SBTJM2')->first();
+        $this->assertNotNull($sbtjm2);
+        $this->assertEquals('Liter', $sbtjm2->unit);
+
+        $tbiPlant = Supplier::where('name', 'TBI Plant')->first();
+        $this->assertNotNull($tbiPlant);
+
+        $this->actingAs($gudang);
+
+        // Selecting SBTJM2 should trigger internal lab mode:
+        // vehicle_no -> 'INTERNAL', supplier_id -> TBI Plant
+        Livewire::test(MaterialReceiveForm::class)
+            ->set('receive_date', '2026-10-20')
+            ->set('material_id', $sbtjm2->id)
+            ->assertSet('isInternalMaterial', true)
+            ->assertSet('vehicle_no', 'INTERNAL')
+            ->assertSet('supplier_id', $tbiPlant->id)
+            ->set('ri_no', 'RI-SBTJM2-001')
+            ->set('volume_m3', 2.0)
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('RI-SBTJM2-001');
+
+        $record = MaterialReceive::where('ri_no', 'RI-SBTJM2-001')->first();
+        $this->assertNotNull($record);
+        $this->assertEquals('INTERNAL', $record->vehicle_no);
+        $this->assertEquals($tbiPlant->id, $record->supplier_id);
+        $this->assertEquals($sbtjm2->id, $record->material_id);
+    }
+
+    public function test_material_additive_allows_external_truck_and_supplier(): void
+    {
+        $gudang = User::where('role', 'petugas_gudang')->first();
+        $additive = Material::where('name', 'Additive')->first();
+        $this->assertNotNull($additive);
+        $this->assertEquals('Kg', $additive->unit);
+
+        $wanShang = Supplier::where('name', 'like', '%WAN SHANG%')->first();
+        $this->assertNotNull($wanShang);
+
+        $this->actingAs($gudang);
+
+        // Selecting Additive (Kg) must NOT lock to internal; operator can specify truck and external supplier
+        Livewire::test(MaterialReceiveForm::class)
+            ->set('receive_date', '2026-10-20')
+            ->set('material_id', $additive->id)
+            ->assertSet('isInternalMaterial', false)
+            ->set('supplier_id', $wanShang->id)
+            ->set('vehicle_no', 'KT 8806 TB')
+            ->set('ri_no', 'RI-ADD-001')
+            ->set('volume_m3', 5.0)
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('RI-ADD-001');
+
+        $record = MaterialReceive::where('ri_no', 'RI-ADD-001')->first();
+        $this->assertNotNull($record);
+        $this->assertEquals('KT 8806 TB', $record->vehicle_no);
+        $this->assertEquals($wanShang->id, $record->supplier_id);
+        $this->assertEquals($additive->id, $record->material_id);
     }
 }

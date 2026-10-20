@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\ActivityLog;
+use App\Models\LabConversion;
 use App\Models\MaterialReceive;
 use App\Models\SalesOrder;
 use App\Models\StockOpname;
@@ -23,6 +24,8 @@ class AuditObserver
             $desc = "Mencatat penerimaan material truk (RI: {$model->ri_no}) seberat {$model->total_weight_kg} Kg";
         } elseif ($model instanceof StockOpname) {
             $desc = "Menginput hasil stock opname fisik timbunan ({$model->method})";
+        } elseif ($model instanceof LabConversion) {
+            $desc = "Mencatat konversi laboratorium {$model->conversion_no}: {$model->additive_used_kg} Kg Additive -> {$model->sbtjm2_produced_liter} L SBTJM2";
         } elseif ($model instanceof User) {
             $desc = "Mendaftarkan pengguna baru: {$model->name} ({$model->email}) role: {$model->role}";
         }

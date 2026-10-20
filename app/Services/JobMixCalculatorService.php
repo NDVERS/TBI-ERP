@@ -21,13 +21,21 @@ class JobMixCalculatorService
         $vol = (float) $volumeM3;
         $factor = $wasteFactor ?? (float) ($jobMix->waste_factor ?: self::DEFAULT_WASTE_FACTOR);
 
+        // Safe fallback ratio if specific job mix formula is incomplete or zero
+        $semenKg = (float) ($jobMix->semen_kg > 0 ? $jobMix->semen_kg : 300.00);
+        $pasirPaluKg = (float) ($jobMix->pasir_palu_kg > 0 ? $jobMix->pasir_palu_kg : 650.00);
+        $pasirLokalKg = (float) ($jobMix->pasir_lokal_kg > 0 ? $jobMix->pasir_lokal_kg : 200.00);
+        $split12Kg = (float) ($jobMix->split_1_2_kg > 0 ? $jobMix->split_1_2_kg : 1080.00);
+        $split23Kg = (float) ($jobMix->split_2_3_kg >= 0 ? $jobMix->split_2_3_kg : 0.00);
+        $additiveLiter = (float) ($jobMix->additive_liter > 0 ? $jobMix->additive_liter : 4.50);
+
         return [
-            'est_semen_kg' => round((float) $jobMix->semen_kg * $vol * $factor, 2),
-            'est_pasir_palu_kg' => round((float) $jobMix->pasir_palu_kg * $vol * $factor, 2),
-            'est_pasir_lokal_kg' => round((float) $jobMix->pasir_lokal_kg * $vol * $factor, 2),
-            'est_split_1_2_kg' => round((float) $jobMix->split_1_2_kg * $vol * $factor, 2),
-            'est_split_2_3_kg' => round((float) $jobMix->split_2_3_kg * $vol * $factor, 2),
-            'est_additive_liter' => round((float) $jobMix->additive_liter * $vol * $factor, 2),
+            'est_semen_kg' => round($semenKg * $vol * $factor, 2),
+            'est_pasir_palu_kg' => round($pasirPaluKg * $vol * $factor, 2),
+            'est_pasir_lokal_kg' => round($pasirLokalKg * $vol * $factor, 2),
+            'est_split_1_2_kg' => round($split12Kg * $vol * $factor, 2),
+            'est_split_2_3_kg' => round($split23Kg * $vol * $factor, 2),
+            'est_additive_liter' => round($additiveLiter * $vol * $factor, 2),
         ];
     }
 

@@ -49,7 +49,7 @@
             @endphp
 
             @if ($placeholder)
-                <option value="" disabled {{ $selectedValue === null || $selectedValue === '' ? 'selected' : '' }}>
+                <option value="" {{ $selectedValue === null || $selectedValue === '' ? 'selected' : '' }}>
                     {{ $placeholder }}
                 </option>
             @endif

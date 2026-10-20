@@ -30,28 +30,6 @@
         </div>
     </div>
 
-    {{-- Flash Notifications --}}
-    @if (session()->has('success'))
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
-            <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="font-medium">
-                {{ session('success') }}
-            </div>
-        </div>
-    @endif
-
-    @if (session()->has('error'))
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-red-50 border border-red-200 text-red-900 text-sm">
-            <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="font-medium">
-                {{ session('error') }}
-            </div>
-        </div>
-    @endif
 
     {{-- Tabel Pengguna --}}
     <x-ui.card
@@ -63,6 +41,9 @@
                 wire:model.live.debounce.250ms="search"
                 placeholder="Cari nama, email, atau role..."
                 prefix="🔍"
+                :clearable="true"
+                :has-value="!empty($search)"
+                loading-target="search"
             />
         </div>
 
@@ -173,8 +154,12 @@
 
     {{-- Modal Tambah / Edit Pengguna --}}
     @if ($showModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg border border-zinc-200 shadow-xl max-w-lg w-full p-6 space-y-5">
+        <div
+            @keydown.escape.window="$wire.closeModal()"
+            wire:click.self="closeModal"
+            class="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/50 flex items-center justify-center p-4 cursor-pointer"
+        >
+            <div class="bg-white rounded-lg border border-zinc-200 shadow-xl max-w-lg w-full p-6 space-y-5 cursor-default">
                 <div class="flex items-center justify-between pb-3 border-b border-zinc-100">
                     <h3 class="text-base font-bold text-zinc-900">
                         {{ $isEditing ? 'Edit Profil & Hak Akses Pengguna' : 'Tambah Pengguna Baru' }}
@@ -280,15 +265,26 @@
                         <button
                             type="button"
                             wire:click="closeModal"
-                            class="h-9 px-4 rounded-md border border-zinc-300 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                            class="h-10 sm:h-9 px-4 rounded-md border border-zinc-300 text-xs font-medium text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 transition-colors"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
-                            class="h-9 px-4 rounded-md bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 transition-colors"
+                            wire:loading.attr="disabled"
+                            wire:target="save"
+                            class="h-10 sm:h-9 px-4 rounded-md bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
-                            {{ $isEditing ? 'Simpan Perubahan' : 'Buat Pengguna' }}
+                            <span wire:loading.remove wire:target="save">
+                                {{ $isEditing ? 'Simpan Perubahan' : 'Buat Pengguna' }}
+                            </span>
+                            <span wire:loading wire:target="save" class="flex items-center gap-1.5">
+                                <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Menyimpan...</span>
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -298,8 +294,12 @@
 
     {{-- Modal Reset Password --}}
     @if ($showPasswordModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg border border-zinc-200 shadow-xl max-w-sm w-full p-5 space-y-4">
+        <div
+            @keydown.escape.window="$wire.closePasswordModal()"
+            wire:click.self="closePasswordModal"
+            class="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/50 flex items-center justify-center p-4 cursor-pointer"
+        >
+            <div class="bg-white rounded-lg border border-zinc-200 shadow-xl max-w-sm w-full p-5 space-y-4 cursor-default">
                 <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
                     <h3 class="text-sm font-bold text-zinc-900">
                         Reset Kata Sandi Pengguna
@@ -332,16 +332,25 @@
                     <button
                         type="button"
                         wire:click="closePasswordModal"
-                        class="h-9 px-3 rounded-md border border-zinc-300 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                        class="h-10 sm:h-9 px-3.5 rounded-md border border-zinc-300 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
                     >
                         Batal
                     </button>
                     <button
                         type="button"
                         wire:click="resetPassword"
-                        class="h-9 px-3 rounded-md bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800"
+                        wire:loading.attr="disabled"
+                        wire:target="resetPassword"
+                        class="h-10 sm:h-9 px-3.5 rounded-md bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
-                        Konfirmasi Reset
+                        <span wire:loading.remove wire:target="resetPassword">Konfirmasi Reset</span>
+                        <span wire:loading wire:target="resetPassword" class="flex items-center gap-1.5">
+                            <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Mereset...</span>
+                        </span>
                     </button>
                 </div>
             </div>

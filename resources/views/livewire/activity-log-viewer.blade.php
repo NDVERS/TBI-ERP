@@ -65,11 +65,13 @@
             {{-- Search Text --}}
             <div class="lg:col-span-2">
                 <label class="block text-xs font-medium text-zinc-700 mb-1">Cari Deskripsi / User / IP</label>
-                <input
-                    type="text"
+                <x-ui.input
                     wire:model.live.debounce.300ms="search"
                     placeholder="Contoh: Sales Order, Palu, 127.0.0.1..."
-                    class="w-full h-10 px-3 rounded-md border border-zinc-300 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                    prefix="🔍"
+                    :clearable="true"
+                    :has-value="!empty($search)"
+                    loading-target="search"
                 />
             </div>
 

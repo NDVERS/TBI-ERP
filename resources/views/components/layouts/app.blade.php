@@ -81,6 +81,7 @@
                             'petugas_gudang' => 'Petugas Gudang',
                             'operator_produksi' => 'Operator Produksi',
                             'surveyor_opname' => 'Surveyor Lapangan',
+                            'demo' => 'Demo User',
                         ];
                         $roleVariants = [
                             'admin' => 'zinc',
@@ -88,6 +89,7 @@
                             'petugas_gudang' => 'amber',
                             'operator_produksi' => 'emerald',
                             'surveyor_opname' => 'emerald',
+                            'demo' => 'zinc',
                         ];
                     @endphp
                     <x-ui.badge :variant="$roleVariants[$userRole] ?? 'zinc'" size="sm">
@@ -99,7 +101,7 @@
             <!-- Navigation Links -->
             <nav class="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-14rem)]">
                 @auth
-                    @if (in_array(auth()->user()->role, ['admin', 'manajemen']))
+                    @if (in_array(auth()->user()->role, ['admin', 'manajemen', 'demo']))
                         <a
                             href="{{ url('/dashboard') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('dashboard*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
@@ -137,8 +139,8 @@
                         $role = auth()->user()->role;
                     @endphp
 
-                    {{-- Sales Orders (Admin, Kasir Logistik) --}}
-                    @if (in_array($role, ['admin', 'kasir_logistik']))
+                    {{-- Sales Orders (Admin, Kasir Logistik, Demo) --}}
+                    @if (in_array($role, ['admin', 'kasir_logistik', 'demo']))
                         <a
                             href="{{ url('/sales-orders') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('sales-orders*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
@@ -160,8 +162,8 @@
                         </a>
                     @endif
 
-                    {{-- Inbound & Kapal (Admin, Petugas Gudang) --}}
-                    @if (in_array($role, ['admin', 'petugas_gudang']))
+                    {{-- Inbound & Kapal (Admin, Petugas Gudang, Demo) --}}
+                    @if (in_array($role, ['admin', 'petugas_gudang', 'demo']))
                         <a
                             href="{{ url('/material-receives') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('material-receives*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
@@ -183,8 +185,8 @@
                         </a>
                     @endif
 
-                    {{-- Produksi (Admin, Operator Produksi) --}}
-                    @if (in_array($role, ['admin', 'operator_produksi']))
+                    {{-- Produksi (Admin, Operator Produksi, Demo) --}}
+                    @if (in_array($role, ['admin', 'operator_produksi', 'demo']))
                         <a
                             href="{{ url('/production-dockets') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('production-dockets*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
@@ -196,8 +198,8 @@
                         </a>
                     @endif
 
-                    {{-- Stock Opname (Admin, Surveyor Opname) --}}
-                    @if (in_array($role, ['admin', 'surveyor_opname']))
+                    {{-- Stock Opname (Admin, Surveyor Opname, Demo) --}}
+                    @if (in_array($role, ['admin', 'surveyor_opname', 'demo']))
                         <a
                             href="{{ url('/stock-opnames') }}"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('stock-opnames*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
@@ -213,7 +215,7 @@
                     @if ($role === 'admin')
                         <div class="pt-3 pb-1">
                             <span class="px-3 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                                Manajemen & Audit
+                                Manajemen &amp; Audit
                             </span>
                         </div>
 
@@ -248,8 +250,8 @@
                         </a>
 
                         <a
-                            href="{{ url('/master-job-mix') }}"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('master-job-mix*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
+                            href="{{ route('master-job-mix') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->routeIs('master-job-mix*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
                         >
                             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -299,12 +301,12 @@
 
         <!-- Top Header Bar -->
         <header class="h-16 bg-white border-b border-zinc-200 px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 min-w-0 pr-2">
                 <!-- Hamburger Trigger for Mobile/Tablet (>=44px touch target) -->
                 <button
                     type="button"
                     @click="sidebarOpen = true"
-                    class="lg:hidden h-11 w-11 flex items-center justify-center text-zinc-600 hover:text-zinc-900 rounded-md border border-zinc-200 hover:bg-zinc-100 active:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    class="lg:hidden h-11 w-11 shrink-0 flex items-center justify-center text-zinc-600 hover:text-zinc-900 rounded-md border border-zinc-200 hover:bg-zinc-100 active:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900"
                     aria-label="Buka Menu Navigasi"
                 >
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -313,8 +315,8 @@
                 </button>
 
                 <!-- Page Header Title -->
-                <div class="flex flex-col">
-                    <h1 class="text-base md:text-lg font-semibold text-zinc-900 tracking-tight leading-tight">
+                <div class="flex flex-col min-w-0">
+                    <h1 class="text-base md:text-lg font-semibold text-zinc-900 tracking-tight leading-tight truncate">
                         {{ $header ?? $title }}
                     </h1>
                 </div>
@@ -322,7 +324,7 @@
 
             <!-- Header Actions Slot -->
             @if ($action)
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 shrink-0">
                     {{ $action }}
                 </div>
             @endif
@@ -330,24 +332,78 @@
 
         <!-- Main Body -->
         <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-            <!-- Flash Message Alerts -->
-            @if (session()->has('success'))
-                <div class="mb-5 p-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{{ session('success') }}</span>
-                </div>
-            @endif
+            <!-- Floating Toast Notifications (Auto-Dismiss) -->
+            <div class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+                @if (session()->has('success'))
+                    <div
+                        x-data="{ show: true }"
+                        x-init="setTimeout(() => show = false, 4500)"
+                        x-show="show"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
+                        class="pointer-events-auto p-4 rounded-lg bg-zinc-900 text-white border border-zinc-800 shadow-xl flex items-start gap-3"
+                        role="alert"
+                    >
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 text-xs md:text-sm text-zinc-100 pr-1">
+                            {{ session('success') }}
+                        </div>
+                        <button
+                            type="button"
+                            @click="show = false"
+                            class="text-zinc-400 hover:text-white transition-colors p-1 -mr-1 -mt-1 rounded cursor-pointer"
+                            title="Tutup notifikasi"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                @endif
 
-            @if (session()->has('error'))
-                <div class="mb-5 p-4 rounded-md bg-red-50 border border-red-200 text-red-800 text-sm flex items-start gap-3">
-                    <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span>{{ session('error') }}</span>
-                </div>
-            @endif
+                @if (session()->has('error'))
+                    <div
+                        x-data="{ show: true }"
+                        x-init="setTimeout(() => show = false, 5000)"
+                        x-show="show"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 -translate-y-2 scale-95"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95"
+                        class="pointer-events-auto p-4 rounded-lg bg-zinc-900 text-white border border-zinc-800 shadow-xl flex items-start gap-3"
+                        role="alert"
+                    >
+                        <div class="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 text-xs md:text-sm text-zinc-100 pr-1">
+                            {{ session('error') }}
+                        </div>
+                        <button
+                            type="button"
+                            @click="show = false"
+                            class="text-zinc-400 hover:text-white transition-colors p-1 -mr-1 -mt-1 rounded cursor-pointer"
+                            title="Tutup notifikasi"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                @endif
+            </div>
 
             {{ $slot }}
         </main>

@@ -120,24 +120,46 @@ class ReconciliationAndProcurementTest extends TestCase
 
         $this->actingAs($gudang);
 
-        // 10.00 m3 * 1658 kg/m3 = 16,580.00 kg
+        // 1. Auto-populated density from master (10.00 m3 * 1658 kg/m3 = 16,580.00 kg)
         Livewire::test(MaterialReceiveForm::class)
             ->set('receive_date', '2026-10-20')
-            ->set('time_in', '08:30')
             ->set('supplier_id', $supplier->id)
             ->set('material_id', $pasirPalu->id)
+            ->assertSet('density', '1658.00')
+            ->assertSet('masterDensity', 1658.0)
             ->set('vehicle_no', 'DN 9999 AB')
             ->set('ri_no', 'RI-OCT-001')
             ->set('volume_m3', 10.00)
+            ->assertSet('totalWeight', 16580.0)
             ->call('save')
             ->assertHasNoErrors()
             ->assertSee('RI-OCT-001');
 
         $receive = MaterialReceive::where('ri_no', 'RI-OCT-001')->first();
         $this->assertNotNull($receive);
+        $this->assertNull($receive->time_in);
         $this->assertEquals(10.00, (float) $receive->volume_m3);
         $this->assertEquals(1658.00, (float) $receive->density_used);
         $this->assertEquals(16580.00, (float) $receive->total_weight_kg);
+
+        // 2. Custom edited density (e.g. 1700 kg/m3 * 8.5 m3 = 14,450.00 kg)
+        Livewire::test(MaterialReceiveForm::class)
+            ->set('receive_date', '2026-10-20')
+            ->set('supplier_id', $supplier->id)
+            ->set('material_id', $pasirPalu->id)
+            ->set('density', 1700.0)
+            ->set('vehicle_no', 'DN 7777 CD')
+            ->set('ri_no', 'RI-OCT-002')
+            ->set('volume_m3', 8.5)
+            ->assertSet('totalWeight', 14450.0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $receive2 = MaterialReceive::where('ri_no', 'RI-OCT-002')->first();
+        $this->assertNotNull($receive2);
+        $this->assertEquals(8.5, (float) $receive2->volume_m3);
+        $this->assertEquals(1700.00, (float) $receive2->density_used);
+        $this->assertEquals(14450.00, (float) $receive2->total_weight_kg);
     }
 
     // --- 3. Vessel Shipment Tests ---
@@ -167,7 +189,7 @@ class ReconciliationAndProcurementTest extends TestCase
             ->set('lab_result', 'Lolos Uji Gradasi')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertSee('20 m³');
+            ->assertSee('20,00 m³');
 
         $shipment = VesselShipment::where('load_volume', 1000.00)->latest('id')->first();
         $this->assertNotNull($shipment);

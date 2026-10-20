@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ProductionDocket;
 use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use Carbon\Carbon;
@@ -9,6 +10,34 @@ use Carbon\CarbonInterface;
 
 class DocumentNumberService
 {
+    /**
+     * Generate Production Docket number:
+     * Format: SP01_xxxx, starting at SP01_7600
+     */
+    public function generateDocketNumber(): string
+    {
+        $prefix = 'SP01_';
+        $baseSequence = 7600;
+
+        $latestDocket = ProductionDocket::query()
+            ->where('docket_no', 'like', "{$prefix}%")
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $latestDocket) {
+            return "{$prefix}{$baseSequence}";
+        }
+
+        $rawNumber = str_replace($prefix, '', $latestDocket->docket_no);
+        if (is_numeric($rawNumber)) {
+            $nextSequence = max($baseSequence, ((int) $rawNumber) + 1);
+        } else {
+            $nextSequence = $baseSequence;
+        }
+
+        return "{$prefix}{$nextSequence}";
+    }
+
     /**
      * Generate Sales Order number with monthly sequence reset:
      * Format: SO/01/TBI/{YY}/{MM}/{0001}

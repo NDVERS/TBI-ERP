@@ -46,7 +46,7 @@ class VesselShipmentForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'petugas_gudang'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'petugas_gudang', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengakses modul Pengiriman Kapal.');
         }
 
@@ -57,6 +57,13 @@ class VesselShipmentForm extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updated(string $propertyName): void
+    {
+        if (in_array($propertyName, ['load_volume', 'unload_volume']) && is_string($this->{$propertyName})) {
+            $this->{$propertyName} = trim(str_replace(',', '.', $this->{$propertyName}));
+        }
     }
 
     public function getShrinkagePreviewProperty(): ?array
@@ -79,8 +86,15 @@ class VesselShipmentForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'petugas_gudang'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'petugas_gudang', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk menginput Pengiriman Kapal.');
+        }
+
+        if (is_string($this->load_volume)) {
+            $this->load_volume = trim(str_replace(',', '.', $this->load_volume));
+        }
+        if (is_string($this->unload_volume)) {
+            $this->unload_volume = trim(str_replace(',', '.', $this->unload_volume));
         }
 
         $this->validate();
@@ -99,28 +113,50 @@ class VesselShipmentForm extends Component
             'lab_result' => trim($this->lab_result),
         ]);
 
+        // Otomasi sinkronisasi status dan tanggal kedatangan Purchase Order
+        $po = null;
+        if ($this->purchase_order_id) {
+            $po = PurchaseOrder::find($this->purchase_order_id);
+            if ($po) {
+                $po->status = 'Sudah Tiba di Pelabuhan';
+                $po->actual_arrival_date = $this->arrival_date ?: Carbon::now()->format('Y-m-d');
+                if (empty($po->actual_departure_date) && ! empty($this->departure_date)) {
+                    $po->actual_departure_date = $this->departure_date;
+                }
+                $po->save();
+            }
+        }
+
         // Reset form
+        $savedPoId = $this->purchase_order_id;
         $this->load_volume = '';
         $this->unload_volume = '';
         $this->purchase_order_id = null;
 
+        $poNotice = $po ? " Status Purchase Order [{$po->po_number}] otomatis diperbarui menjadi 'Sudah Tiba di Pelabuhan'." : '';
+
         if ($shrinkage['shrinkage_percent'] > 2.0) {
-            session()->flash('warning', "PERINGATAN: Pengiriman kapal tersimpan dengan tingkat susut TINGGI ({$shrinkage['shrinkage_percent']}%), melebihi batas toleransi 2.0%.");
+            session()->flash('warning', "PERINGATAN: Pengiriman kapal tersimpan dengan tingkat susut TINGGI ({$shrinkage['shrinkage_percent']}%), melebihi batas toleransi 2.0%.{$poNotice}");
         } else {
-            session()->flash('success', "Pengiriman kapal berhasil dicatat. Selisih susut: {$shrinkage['volume_diff']} m³ ({$shrinkage['shrinkage_percent']}%).");
+            session()->flash('success', "Pengiriman kapal berhasil dicatat. Selisih susut: {$shrinkage['volume_diff']} m³ ({$shrinkage['shrinkage_percent']}%).{$poNotice}");
         }
     }
 
     public function render(): View
     {
-        $purchaseOrders = PurchaseOrder::latest('po_date')->take(20)->get(['id', 'po_number']);
+        $purchaseOrders = PurchaseOrder::with(['material', 'supplier'])
+            ->whereIn('status', ['Sudah Dimuat', 'Dalam Perjalanan'])
+            ->latest('po_date')
+            ->latest('id')
+            ->get();
 
         $shipments = VesselShipment::query()
-            ->with(['purchaseOrder'])
+            ->with(['purchaseOrder.supplier'])
             ->when($this->search, function ($query, $search) {
                 $query->where('lab_result', 'like', "%{$search}%")
                     ->orWhereHas('purchaseOrder', function ($pq) use ($search) {
-                        $pq->where('po_number', 'like', "%{$search}%");
+                        $pq->where('po_number', 'like', "%{$search}%")
+                            ->orWhere('vessel_name', 'like', "%{$search}%");
                     });
             })
             ->latest('arrival_date')

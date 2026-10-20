@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\MaterialReceive;
+use App\Models\ProductionDocket;
+use App\Models\PurchaseOrder;
 use App\Models\SalesOrder;
 use App\Services\StockReconciliationService;
 use Carbon\Carbon;
@@ -27,7 +29,7 @@ class ExecutiveDashboard extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'manajemen'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'manajemen', 'demo'])) {
             abort(403, 'Akses Ditolak: Dashboard Eksekutif hanya dapat diakses oleh Admin & Manajemen.');
         }
 
@@ -40,7 +42,16 @@ class ExecutiveDashboard extends Component
         $year = $this->selectedYear;
         $month = $this->selectedMonth;
 
-        // 1. KPI Penjualan Bulan Ini
+        // 1. KPI Kumulatif Produksi Cor Hari Ini (Berdasarkan Production Docket)
+        $todayDate = Carbon::today()->toDateString();
+        $todayProductionVolume = (float) ProductionDocket::query()
+            ->whereDate('production_date', $todayDate)
+            ->sum('volume_m3');
+
+        $todayDocketCount = ProductionDocket::query()
+            ->whereDate('production_date', $todayDate)
+            ->count();
+
         $totalSalesVolume = (float) SalesOrder::query()
             ->whereYear('order_date', $year)
             ->whereMonth('order_date', $month)
@@ -51,7 +62,14 @@ class ExecutiveDashboard extends Component
             ->whereMonth('order_date', $month)
             ->count();
 
-        // 2. KPI Total Material Masuk Bulan Ini
+        // 2. Widget Logistik: 5 PO Pengapalan Aktif Terdekat
+        $nearestPOs = PurchaseOrder::query()
+            ->with(['supplier', 'material'])
+            ->where('status', '!=', 'Selesai Seluruhnya')
+            ->orderByRaw('COALESCE(est_arrival_date, actual_arrival_date, po_date) ASC')
+            ->take(5)
+            ->get();
+
         $totalMaterialInKg = (float) MaterialReceive::query()
             ->whereYear('receive_date', $year)
             ->whereMonth('receive_date', $month)
@@ -68,6 +86,7 @@ class ExecutiveDashboard extends Component
         $sesuaiCount = $reconciliations->where('status', StockReconciliationService::STATUS_SESUAI)->count();
         $kelebihanCount = $reconciliations->where('status', StockReconciliationService::STATUS_KELEBIHAN)->count();
         $kekuranganCount = $reconciliations->where('status', StockReconciliationService::STATUS_KEKURANGAN)->count();
+        $belumDiopnameCount = $reconciliations->where('status', StockReconciliationService::STATUS_BELUM_DIOPNAME)->count();
 
         // 4. Estimasi Pemakaian Solar Armada
         $totalEstSolar = (float) SalesOrder::query()
@@ -75,11 +94,12 @@ class ExecutiveDashboard extends Component
             ->whereMonth('order_date', $month)
             ->sum('est_solar_liter');
 
-        // 5. 5 Sales Order Terbaru
-        $latestSalesOrders = SalesOrder::query()
+        // 5. 5 Sales Order Rencana Cor Besok (H+1)
+        $tomorrowDate = Carbon::tomorrow()->toDateString();
+        $tomorrowSalesOrders = SalesOrder::query()
             ->with(['customer', 'jobMix'])
-            ->latest('order_date')
-            ->latest('id')
+            ->whereDate('order_date', $tomorrowDate)
+            ->orderBy('id', 'asc')
             ->take(5)
             ->get();
 
@@ -94,14 +114,14 @@ class ExecutiveDashboard extends Component
             ->take(5)
             ->get();
 
-        // 7. Peringatan Dini Stok Kritis (Ambang batas minimum 50.000 Kg untuk agregat / semen)
+        // 7. Peringatan Dini Stok Kritis (Ambang batas minimum 50.000 untuk material produksi utama)
         $lowStockThresholdKg = 50000.00;
         $lowStockMaterials = $reconciliations->filter(function ($item) use ($lowStockThresholdKg) {
-            return $item['unit'] === 'Kg' && (float) $item['stok_teoritis'] < $lowStockThresholdKg;
+            return (float) $item['stok_teoritis'] < $lowStockThresholdKg;
         });
 
-        // Filter material utama untuk ringkasan cepat
-        $quickStockMaterials = $reconciliations->take(6);
+        // Seluruh material utama untuk ringkasan cepat stok & deviasi
+        $quickStockMaterials = $reconciliations;
 
         $months = [
             1 => 'Januari',
@@ -119,6 +139,11 @@ class ExecutiveDashboard extends Component
         ];
 
         return view('livewire.executive-dashboard', [
+            'todayProductionVolume' => $todayProductionVolume,
+            'todayDocketCount' => $todayDocketCount,
+            'nearestPOs' => $nearestPOs,
+            'tomorrowSalesOrders' => $tomorrowSalesOrders,
+            'latestSalesOrders' => $tomorrowSalesOrders, // Backward compatibility
             'totalSalesVolume' => $totalSalesVolume,
             'totalSalesOrders' => $totalSalesOrders,
             'totalMaterialInKg' => $totalMaterialInKg,
@@ -126,8 +151,8 @@ class ExecutiveDashboard extends Component
             'sesuaiCount' => $sesuaiCount,
             'kelebihanCount' => $kelebihanCount,
             'kekuranganCount' => $kekuranganCount,
+            'belumDiopnameCount' => $belumDiopnameCount,
             'totalEstSolar' => $totalEstSolar,
-            'latestSalesOrders' => $latestSalesOrders,
             'quickStockMaterials' => $quickStockMaterials,
             'topJobMixes' => $topJobMixes,
             'lowStockMaterials' => $lowStockMaterials,

@@ -23,22 +23,6 @@
         </div>
     </div>
 
-    {{-- Success Notification (Strict: Only success message, no calculation values) --}}
-    @if (session()->has('success'))
-        <div class="flex items-start gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
-            <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="flex-1">
-                <div class="font-semibold">
-                    {{ session('success') }}
-                </div>
-                <div class="text-xs text-emerald-700 mt-0.5">
-                    Data dimensi telah terenkripsi dan diteruskan ke server untuk diverifikasi pada rekonsiliasi stok admin.
-                </div>
-            </div>
-        </div>
-    @endif
 
     {{-- Tablet Touch-Friendly Opname Form --}}
     <x-ui.card
@@ -306,6 +290,18 @@
                 $headers[] = 'Hasil Hitung Server (Admin)';
             }
         @endphp
+
+        {{-- Search Bar --}}
+        <div class="mb-4 max-w-sm">
+            <x-ui.input
+                wire:model.live.debounce.300ms="search"
+                placeholder="Cari material atau bentuk geometri..."
+                prefix="🔍"
+                :clearable="true"
+                :has-value="!empty($search)"
+                loading-target="search"
+            />
+        </div>
 
         <x-ui.table :headers="$headers">
             @forelse ($opnames as $opname)

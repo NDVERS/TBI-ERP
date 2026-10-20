@@ -75,6 +75,7 @@ class StockReconciliation extends Component
 
             // Data rows (Values only, strictly no formula leakage)
             foreach ($reconciliations as $row) {
+                $hasOpname = ! empty($row['has_opname']);
                 fputcsv($handle, [
                     $row['material_id'],
                     $row['material_name'],
@@ -83,9 +84,9 @@ class StockReconciliation extends Component
                     number_format((float) $row['penerimaan'], 2, '.', ''),
                     number_format((float) $row['pemakaian'], 2, '.', ''),
                     number_format((float) $row['stok_teoritis'], 2, '.', ''),
-                    number_format((float) $row['stok_fisik'], 2, '.', ''),
-                    number_format((float) $row['selisih'], 2, '.', ''),
-                    number_format((float) $row['persentase_selisih'], 2, '.', '').'%',
+                    $hasOpname ? number_format((float) $row['stok_fisik'], 2, '.', '') : 'Belum Diopname',
+                    $hasOpname ? number_format((float) $row['selisih'], 2, '.', '') : '-',
+                    $hasOpname ? number_format((float) $row['persentase_selisih'], 2, '.', '').'%' : '-',
                     $row['status'],
                 ]);
             }
@@ -101,6 +102,7 @@ class StockReconciliation extends Component
         $sesuaiCount = $rawReconciliations->where('status', StockReconciliationService::STATUS_SESUAI)->count();
         $kelebihanCount = $rawReconciliations->where('status', StockReconciliationService::STATUS_KELEBIHAN)->count();
         $kekuranganCount = $rawReconciliations->where('status', StockReconciliationService::STATUS_KEKURANGAN)->count();
+        $belumDiopnameCount = $rawReconciliations->where('status', StockReconciliationService::STATUS_BELUM_DIOPNAME)->count();
 
         $filteredReconciliations = $rawReconciliations->when($this->search, function (Collection $collection, $search) {
             return $collection->filter(function ($item) use ($search) {
@@ -131,6 +133,7 @@ class StockReconciliation extends Component
             'sesuaiCount' => $sesuaiCount,
             'kelebihanCount' => $kelebihanCount,
             'kekuranganCount' => $kekuranganCount,
+            'belumDiopnameCount' => $belumDiopnameCount,
             'highDeviationCount' => $highDeviationCount,
             'months' => $months,
         ]);

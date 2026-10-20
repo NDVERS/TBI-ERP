@@ -23,7 +23,7 @@
             </p>
         </div>
 
-        <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md" x-data="{ email: '{{ old('email', '') }}', password: '' }">
             <x-ui.card>
                 {{-- Quick Login by Role (For Testing & Fast Access) --}}
                 <div class="mb-6 pb-6 border-b border-zinc-100">
@@ -31,37 +31,37 @@
                         Akses Cepat Pengujian (Role RBAC):
                     </span>
                     <div class="grid grid-cols-2 gap-2 text-xs">
-                        <form method="POST" action="{{ route('login') }}">
+                        <form method="POST" action="{{ route('login') }}" @submit="email = 'demo@tbi.com'; password = 'password'">
                             @csrf
-                            <input type="hidden" name="quick_role" value="admin">
-                            <button type="submit" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
-                                <div class="font-bold text-zinc-900">Admin</div>
-                                <div class="text-[10px] text-zinc-500">Superuser / Hak Penuh</div>
+                            <input type="hidden" name="quick_role" value="demo">
+                            <button type="submit" @click="email = 'demo@tbi.com'; password = 'password'" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
+                                <div class="font-bold text-zinc-900">Demo</div>
+                                <div class="text-[10px] text-zinc-500">Akun Demo / Akses Terbatas</div>
                             </button>
                         </form>
 
-                        <form method="POST" action="{{ route('login') }}">
+                        <form method="POST" action="{{ route('login') }}" @submit="email = 'logistik@tbi.com'; password = 'password'">
                             @csrf
                             <input type="hidden" name="quick_role" value="kasir_logistik">
-                            <button type="submit" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
+                            <button type="submit" @click="email = 'logistik@tbi.com'; password = 'password'" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
                                 <div class="font-bold text-zinc-900">Kasir Logistik</div>
                                 <div class="text-[10px] text-zinc-500">Sales Order & PO</div>
                             </button>
                         </form>
 
-                        <form method="POST" action="{{ route('login') }}">
+                        <form method="POST" action="{{ route('login') }}" @submit="email = 'surveyor@tbi.com'; password = 'password'">
                             @csrf
                             <input type="hidden" name="quick_role" value="surveyor_opname">
-                            <button type="submit" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
+                            <button type="submit" @click="email = 'surveyor@tbi.com'; password = 'password'" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
                                 <div class="font-bold text-zinc-900">Surveyor Lapangan</div>
                                 <div class="text-[10px] text-zinc-500">Opname Tablet</div>
                             </button>
                         </form>
 
-                        <form method="POST" action="{{ route('login') }}">
+                        <form method="POST" action="{{ route('login') }}" @submit="email = 'operator@tbi.com'; password = 'password'">
                             @csrf
                             <input type="hidden" name="quick_role" value="operator_produksi">
-                            <button type="submit" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
+                            <button type="submit" @click="email = 'operator@tbi.com'; password = 'password'" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
                                 <div class="font-bold text-zinc-900">Operator Batching</div>
                                 <div class="text-[10px] text-zinc-500">Docket Produksi</div>
                             </button>
@@ -76,6 +76,8 @@
                     <x-ui.input
                         type="email"
                         name="email"
+                        id="email-input"
+                        x-model="email"
                         label="Email Resmi"
                         :value="old('email')"
                         placeholder="contoh: admin@tbi.com"
@@ -85,6 +87,8 @@
                     <x-ui.input
                         type="password"
                         name="password"
+                        id="password-input"
+                        x-model="password"
                         label="Password"
                         placeholder="••••••••"
                         required

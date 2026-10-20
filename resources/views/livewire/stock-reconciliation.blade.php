@@ -67,7 +67,7 @@
     </div>
 
     {{-- KPI Metric Summary Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- Card Total --}}
         <div class="p-4 rounded-lg bg-white border border-zinc-200 shadow-xs">
             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Total Material Diaudit</span>
@@ -75,6 +75,18 @@
                 {{ $reconciliations->count() }}
             </div>
             <span class="text-[11px] text-zinc-400 mt-0.5 block">Material aktif di sistem</span>
+        </div>
+
+        {{-- Card BELUM DIOPNAME --}}
+        <div class="p-4 rounded-lg bg-white border border-zinc-200 shadow-xs">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Belum Diopname</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-zinc-400"></span>
+            </div>
+            <div class="text-2xl font-bold font-mono tabular-nums text-zinc-700 mt-1">
+                {{ $belumDiopnameCount }}
+            </div>
+            <span class="text-[11px] text-zinc-400 mt-0.5 block">Perlu verifikasi fisik lapangan</span>
         </div>
 
         {{-- Card SESUAI --}}
@@ -171,7 +183,8 @@
                         'KEKURANGAN' => 'red',
                         default => 'zinc',
                     };
-                    $isAnomaly = (float) $row['persentase_selisih'] > 2.0;
+                    $hasOpname = ! empty($row['has_opname']);
+                    $isAnomaly = $hasOpname && (float) ($row['persentase_selisih'] ?? 0) > 2.0;
                 @endphp
                 <tr class="{{ $isAnomaly ? 'bg-red-50/70 border-l-4 border-l-red-600 hover:bg-red-50' : 'hover:bg-zinc-50/80' }} transition-colors">
                     {{-- Nama Material --}}
@@ -203,18 +216,30 @@
                     </td>
 
                     {{-- Stok Fisik Opname --}}
-                    <td class="px-4 py-3 font-mono tabular-nums font-bold text-blue-700 whitespace-nowrap">
-                        {{ number_format((float) $row['stok_fisik'], 2, ',', '.') }}
+                    <td class="px-4 py-3 font-mono tabular-nums font-bold whitespace-nowrap {{ $hasOpname ? 'text-blue-700' : 'text-zinc-400' }}">
+                        @if ($hasOpname)
+                            {{ number_format((float) $row['stok_fisik'], 2, ',', '.') }}
+                        @else
+                            <span class="font-normal text-xs text-zinc-400 italic">Belum Diopname</span>
+                        @endif
                     </td>
 
                     {{-- Deviasi Selisih --}}
-                    <td class="px-4 py-3 font-mono tabular-nums font-medium whitespace-nowrap {{ (float) $row['selisih'] == 0 ? 'text-zinc-500' : ((float) $row['selisih'] > 0 ? 'text-red-600' : 'text-amber-600') }}">
-                        {{ (float) $row['selisih'] > 0 ? '-' : ((float) $row['selisih'] < 0 ? '+' : '') }}{{ number_format(abs((float) $row['selisih']), 2, ',', '.') }}
+                    <td class="px-4 py-3 font-mono tabular-nums font-medium whitespace-nowrap {{ ! $hasOpname ? 'text-zinc-400' : ((float) $row['selisih'] == 0 ? 'text-zinc-500' : ((float) $row['selisih'] > 0 ? 'text-red-600' : 'text-amber-600')) }}">
+                        @if ($hasOpname)
+                            {{ (float) $row['selisih'] > 0 ? '-' : ((float) $row['selisih'] < 0 ? '+' : '') }}{{ number_format(abs((float) $row['selisih']), 2, ',', '.') }}
+                        @else
+                            -
+                        @endif
                     </td>
 
                     {{-- Persentase Selisih --}}
                     <td class="px-4 py-3 font-mono tabular-nums text-zinc-600 whitespace-nowrap text-xs font-semibold">
-                        {{ number_format((float) $row['persentase_selisih'], 2, ',', '.') }}%
+                        @if ($hasOpname)
+                            {{ number_format((float) $row['persentase_selisih'], 2, ',', '.') }}%
+                        @else
+                            -
+                        @endif
                     </td>
 
                     {{-- Status Badge & Anomali Indicator --}}
@@ -242,6 +267,7 @@
 
         <div class="mt-4 p-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-500 space-y-1">
             <div class="font-semibold text-zinc-700">Keterangan Ambang Batas (PRD Compliance):</div>
+            <div>• <strong class="text-zinc-700">BELUM DIOPNAME:</strong> Belum ada entri opname fisik yang dicatat surveyor pada bulan berjalan (eliminasi status semu).</div>
             <div>• <strong class="text-emerald-700">SESUAI:</strong> Deviasi persentase &le; 0.50% terhadap stok teoritis (rentang toleransi wajar susut/timbang).</div>
             <div>• <strong class="text-amber-700">KELEBIHAN:</strong> Stok fisik opname lapangan lebih besar dari perhitungan buku teoritis (> +0.50%).</div>
             <div>• <strong class="text-red-700">KEKURANGAN:</strong> Stok fisik opname lapangan lebih kecil dari perhitungan buku teoritis (> -0.50%).</div>

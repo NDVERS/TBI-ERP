@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FleetTripLog;
+use App\Models\LabConversion;
 use App\Models\Material;
 use App\Models\MaterialReceive;
 use App\Models\ProductionDocket;
@@ -18,6 +19,8 @@ class StockReconciliationService
     public const STATUS_KELEBIHAN = 'KELEBIHAN';
 
     public const STATUS_KEKURANGAN = 'KEKURANGAN';
+
+    public const STATUS_BELUM_DIOPNAME = 'BELUM DIOPNAME';
 
     /**
      * Calculate reconciliation metrics purely from numeric inputs:
@@ -84,15 +87,33 @@ class StockReconciliationService
     }
 
     /**
-     * Get monthly material receive total weight in Kg for given material and period.
+     * Get monthly material receive total weight in Kg (or Liter for Dexlite) for given material and period.
      */
     public function getMonthlyReceiveTotal(Material $material, int $year, int $month): float
     {
-        return (float) MaterialReceive::query()
+        $name = strtolower(trim($material->name));
+        $query = MaterialReceive::query()
             ->where('material_id', $material->id)
             ->whereYear('receive_date', $year)
-            ->whereMonth('receive_date', $month)
-            ->sum('total_weight_kg');
+            ->whereMonth('receive_date', $month);
+
+        // Untuk Dexlite (satuan Liter), hitung total penerimaan dalam satuan Liter
+        if (str_contains($name, 'dexlite') || str_contains($name, 'solar') || strtoupper($material->unit) === 'LITER') {
+            $receives = $query->get();
+            $totalLiter = 0.0;
+            foreach ($receives as $rec) {
+                if ((float) $rec->volume_m3 > 0) {
+                    $totalLiter += (float) $rec->volume_m3 * 1000.0;
+                } elseif ((float) $rec->total_weight_kg > 0) {
+                    $density = (float) $rec->density_used ?: ((float) $material->density_kg_m3 ?: 840.0);
+                    $totalLiter += ((float) $rec->total_weight_kg / $density) * 1000.0;
+                }
+            }
+
+            return round($totalLiter, 2);
+        }
+
+        return (float) $query->sum('total_weight_kg');
     }
 
     /**
@@ -119,6 +140,14 @@ class StockReconciliationService
                 ->sum('est_solar_liter');
         }
 
+        // Untuk Additive mentah (Kg), pemakaian dihitung dari konversi lab ke SBTJM2
+        if (str_contains($name, 'additive')) {
+            return (float) LabConversion::query()
+                ->whereYear('conversion_date', $year)
+                ->whereMonth('conversion_date', $month)
+                ->sum('additive_used_kg');
+        }
+
         $docketsQuery = ProductionDocket::query()
             ->whereYear('production_date', $year)
             ->whereMonth('production_date', $month);
@@ -130,7 +159,7 @@ class StockReconciliationService
             str_contains($name, '1/2') || str_contains($name, 'kecil') => (float) $docketsQuery->sum('split_1_2_act'),
             str_contains($name, '2/3') || str_contains($name, 'besar') => (float) $docketsQuery->sum('split_2_3_act'),
             str_contains($name, 'air') => (float) $docketsQuery->sum('water_act'),
-            str_contains($name, 'additive') || str_contains($name, 'admixture') => (float) $docketsQuery->sum('admixture_act'),
+            str_contains($name, 'sbtjm2') => (float) $docketsQuery->sum('admixture_act'),
             default => 0.0,
         };
 
@@ -149,13 +178,14 @@ class StockReconciliationService
             str_contains($name, 'lokal') => (float) $soQuery->sum('est_pasir_lokal_kg'),
             str_contains($name, '1/2') || str_contains($name, 'kecil') => (float) $soQuery->sum('est_split_1_2_kg'),
             str_contains($name, '2/3') || str_contains($name, 'besar') => (float) $soQuery->sum('est_split_2_3_kg'),
-            str_contains($name, 'additive') || str_contains($name, 'admixture') => (float) $soQuery->sum('est_additive_liter'),
+            str_contains($name, 'sbtjm2') => (float) $soQuery->sum('est_additive_liter'),
             default => 0.0,
         };
     }
 
     /**
-     * Get latest stock opname weight for given material and period.
+     * Get latest stock opname weight (or liters for Dexlite) for given material and period.
+     * Evaluates valid physical stock from drone or manual measurements (COALESCE logic).
      */
     public function getLatestOpnameStock(Material $material, int $year, int $month): ?float
     {
@@ -163,11 +193,30 @@ class StockReconciliationService
             ->where('material_id', $material->id)
             ->whereYear('opname_date', $year)
             ->whereMonth('opname_date', $month)
+            ->where(function ($q) {
+                $q->where('calculated_weight_kg', '>', 0)
+                    ->orWhere('calculated_volume_m3', '>', 0);
+            })
             ->orderByDesc('opname_date')
             ->orderByDesc('id')
             ->first();
 
-        return $latestOpname ? (float) $latestOpname->calculated_weight_kg : null;
+        if (! $latestOpname) {
+            return null;
+        }
+
+        $name = strtolower(trim($material->name));
+        if (str_contains($name, 'dexlite') || str_contains($name, 'solar') || strtoupper($material->unit) === 'LITER') {
+            if ((float) $latestOpname->calculated_volume_m3 > 0) {
+                return round((float) $latestOpname->calculated_volume_m3 * 1000.0, 2);
+            }
+
+            $density = (float) $material->density_kg_m3 ?: 840.0;
+
+            return round(((float) $latestOpname->calculated_weight_kg / $density) * 1000.0, 2);
+        }
+
+        return (float) $latestOpname->calculated_weight_kg;
     }
 
     /**
@@ -183,9 +232,33 @@ class StockReconciliationService
         $stokAwal = (float) $material->initial_stock_kg;
         $penerimaan = $this->getMonthlyReceiveTotal($material, $targetYear, $targetMonth);
         $pemakaian = $this->getMonthlyProductionUsage($material, $targetYear, $targetMonth);
-        $stokFisik = $this->getLatestOpnameStock($material, $targetYear, $targetMonth) ?? ($stokAwal + $penerimaan - $pemakaian);
+        // Safe addition and subtraction: (stokAwal + penerimaan - COALESCE(pemakaian, 0))
+        $stokTeoritis = round($stokAwal + $penerimaan - ($pemakaian ?: 0.0), 2);
 
-        $result = $this->calculateReconciliation($stokAwal, $penerimaan, $pemakaian, $stokFisik);
+        $latestOpnameWeight = $this->getLatestOpnameStock($material, $targetYear, $targetMonth);
+        $hasOpname = $latestOpnameWeight !== null;
+
+        if (! $hasOpname) {
+            return [
+                'material_id' => $material->id,
+                'material_name' => $material->name,
+                'unit' => $material->unit,
+                'year' => $targetYear,
+                'month' => $targetMonth,
+                'stok_awal' => $stokAwal,
+                'penerimaan' => $penerimaan,
+                'pemakaian' => $pemakaian,
+                'stok_teoritis' => $stokTeoritis,
+                'stok_fisik' => null,
+                'selisih' => null,
+                'deviasi' => null,
+                'persentase_selisih' => null,
+                'status' => self::STATUS_BELUM_DIOPNAME,
+                'has_opname' => false,
+            ];
+        }
+
+        $result = $this->calculateReconciliation($stokAwal, $penerimaan, $pemakaian, $latestOpnameWeight);
 
         return array_merge([
             'material_id' => $material->id,
@@ -193,6 +266,7 @@ class StockReconciliationService
             'unit' => $material->unit,
             'year' => $targetYear,
             'month' => $targetMonth,
+            'has_opname' => true,
         ], $result);
     }
 

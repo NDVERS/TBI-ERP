@@ -17,17 +17,6 @@
         </div>
     </div>
 
-    {{-- Success Notification --}}
-    @if (session()->has('success'))
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
-            <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="font-medium">
-                {{ session('success') }}
-            </div>
-        </div>
-    @endif
 
     {{-- Form Section: Input Sales Order Baru --}}
     <x-ui.card
@@ -75,11 +64,16 @@
                     placeholder="-- Pilih Mutu Beton --"
                     required
                 >
-                    @foreach ($jobMixes as $jm)
-                        <option value="{{ $jm->id }}">
-                            {{ $jm->mutu_code }} {{ $jm->description ? '— ' . $jm->description : '' }}
-                        </option>
-                    @endforeach
+                    <optgroup label="Seri K (K-Series)">
+                        @foreach ($kSeriesJobMixes as $jm)
+                            <option value="{{ $jm->id }}">{{ $jm->mutu_code }}</option>
+                        @endforeach
+                    </optgroup>
+                    <optgroup label="Seri FC & FS (Megapascal & Flexural)">
+                        @foreach ($fcFsJobMixes as $jm)
+                            <option value="{{ $jm->id }}">{{ $jm->mutu_code }}</option>
+                        @endforeach
+                    </optgroup>
                 </x-ui.select>
 
                 {{-- Volume m3 --}}
@@ -142,11 +136,14 @@
                 wire:model.live.debounce.300ms="search"
                 placeholder="Cari No. SO, customer, mutu, lokasi..."
                 prefix="🔍"
+                :clearable="true"
+                :has-value="!empty($search)"
+                loading-target="search"
             />
         </div>
 
         @php
-            $headers = ['No. SO', 'Tanggal', 'Customer', 'Lokasi Proyek', 'Mutu Beton', 'Volume', 'Jarak'];
+            $headers = ['No. SO', 'Tanggal', 'Customer', 'Lokasi Proyek', 'Mutu Beton', 'Target Vol', 'Realisasi & Status', 'Jarak'];
             if (auth()->user()?->role === 'admin') {
                 $headers[] = 'Estimasi Kebutuhan (Admin)';
             }
@@ -154,6 +151,22 @@
 
         <x-ui.table :headers="$headers">
             @forelse ($salesOrders as $so)
+                @php
+                    $target = (float) $so->volume_m3;
+                    $delivered = (float) $so->delivered_volume_m3;
+                    $soStatus = $so->status ?? 'aktif';
+                    $statusVariant = match ($soStatus) {
+                        'selesai' => 'emerald',
+                        'parsial' => 'amber',
+                        default => 'blue',
+                    };
+                    $statusLabel = match ($soStatus) {
+                        'selesai' => 'Selesai',
+                        'parsial' => 'Parsial',
+                        default => 'Aktif',
+                    };
+                    $pct = $target > 0 ? min(100, round(($delivered / $target) * 100)) : 0;
+                @endphp
                 <tr class="hover:bg-zinc-50/80 transition-colors">
                     {{-- No. SO --}}
                     <td class="px-4 py-3 first:pl-5 font-mono font-semibold text-zinc-900 whitespace-nowrap">
@@ -182,9 +195,24 @@
                         </x-ui.badge>
                     </td>
 
-                    {{-- Volume --}}
+                    {{-- Target Volume --}}
                     <td class="px-4 py-3 font-mono tabular-nums font-semibold text-zinc-900 whitespace-nowrap">
-                        {{ number_format((float) $so->volume_m3, 2, ',', '.') }} m³
+                        {{ number_format($target, 2, ',', '.') }} m³
+                    </td>
+
+                    {{-- Realisasi & Status --}}
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex items-center gap-1.5">
+                            <x-ui.badge :variant="$statusVariant" size="sm">
+                                {{ $statusLabel }}
+                            </x-ui.badge>
+                            <span class="text-xs font-mono font-bold tabular-nums text-zinc-700">
+                                {{ number_format($delivered, 2, ',', '.') }} m³
+                            </span>
+                        </div>
+                        <div class="w-24 bg-zinc-100 rounded-full h-1 mt-1 overflow-hidden">
+                            <div class="bg-zinc-800 h-1 rounded-full transition-all" style="width: {{ $pct }}%"></div>
+                        </div>
                     </td>
 
                     {{-- Jarak --}}

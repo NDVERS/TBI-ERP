@@ -43,6 +43,8 @@ class StockOpnameForm extends Component
     // Stock Bin tambahan di hopper / batcher
     public string|float $stock_bin = '';
 
+    public string $search = '';
+
     public function mount(): void
     {
         if (! Auth::check()) {
@@ -51,11 +53,32 @@ class StockOpnameForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'surveyor_opname'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'surveyor_opname', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengakses modul Stock Opname.');
         }
 
         $this->opname_date = now()->format('Y-m-d');
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updated(string $propertyName): void
+    {
+        if (in_array($propertyName, ['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin']) && is_string($this->{$propertyName})) {
+            $this->{$propertyName} = trim(str_replace(',', '.', $this->{$propertyName}));
+        }
+    }
+
+    private function normalizeDecimals(): void
+    {
+        foreach (['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin'] as $prop) {
+            if (is_string($this->{$prop})) {
+                $this->{$prop} = trim(str_replace(',', '.', $this->{$prop}));
+            }
+        }
     }
 
     public function updatedShapeType(): void
@@ -72,9 +95,11 @@ class StockOpnameForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'surveyor_opname'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'surveyor_opname', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk menginput Stock Opname.');
         }
+
+        $this->normalizeDecimals();
 
         // Custom dynamic validation based on shape type
         $rules = [
@@ -155,6 +180,14 @@ class StockOpnameForm extends Component
 
         $opnames = StockOpname::query()
             ->with(['material', 'creator'])
+            ->when($this->search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('method', 'like', "%{$search}%")
+                        ->orWhereHas('material', function ($mq) use ($search) {
+                            $mq->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->latest('opname_date')
             ->latest('id')
             ->paginate(10);

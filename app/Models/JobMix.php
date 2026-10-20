@@ -38,4 +38,31 @@ class JobMix extends Model
     {
         return $this->hasMany(SalesOrder::class);
     }
+
+    /**
+     * Estimasi kebutuhan air per 1 m3 adukan ready-mix (w/c ratio approx 0.48, berkisar 160-190 L).
+     */
+    public function getWaterLiterAttribute(): float
+    {
+        if (isset($this->attributes['water_liter']) && (float) $this->attributes['water_liter'] > 0) {
+            return (float) $this->attributes['water_liter'];
+        }
+
+        $semen = (float) $this->semen_kg;
+        if ($semen > 0) {
+            return round(min(200.0, max(140.0, $semen * 0.48)), 2);
+        }
+
+        return 180.00;
+    }
+
+    /**
+     * Kategori mutu beton (Seri K / Seri FC & FS).
+     */
+    public function getCategoryNameAttribute(): string
+    {
+        return str_starts_with($this->mutu_code, 'K')
+            ? 'Seri K'
+            : 'Seri FC-FS';
+    }
 }

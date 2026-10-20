@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD041 -->
 <laravel-boost-guidelines>
 === foundation rules ===
 
@@ -8,6 +9,7 @@
 This application is a Laravel application running on PHP 8.5. Always use the APIs that match the installed major version of each package — do not assume a version.
 
 Before relying on a package's API, confirm its installed version:
+
 - PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
 - JS packages: check `package.json` for the installed versions.
 
@@ -106,7 +108,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - If you're creating a generic PHP class, use `php artisan make:class`.
 - Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
 
-### Model Creation
+## Model Creation
 
 - When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
 

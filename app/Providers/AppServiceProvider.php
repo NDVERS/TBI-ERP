@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\LabConversion;
 use App\Models\MaterialReceive;
 use App\Models\SalesOrder;
 use App\Models\StockOpname;
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         SalesOrder::observe(AuditObserver::class);
         MaterialReceive::observe(AuditObserver::class);
         StockOpname::observe(AuditObserver::class);
+        LabConversion::observe(AuditObserver::class);
         User::observe(AuditObserver::class);
     }
 }

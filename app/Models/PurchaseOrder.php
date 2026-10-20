@@ -16,9 +16,18 @@ class PurchaseOrder extends Model
         'po_date',
         'supplier_id',
         'vessel_name',
+        'loading_jetty',
+        'unloading_jetty',
+        'est_departure_date',
+        'est_arrival_date',
+        'actual_departure_date',
+        'actual_arrival_date',
+        'status',
         'material_id',
+        'material_type_input',
         'specification',
         'qty_ordered',
+        'unit',
         'unit_price',
         'subtotal',
         'ppn_amount',
@@ -29,6 +38,10 @@ class PurchaseOrder extends Model
     {
         return [
             'po_date' => 'date',
+            'est_departure_date' => 'date',
+            'est_arrival_date' => 'date',
+            'actual_departure_date' => 'date',
+            'actual_arrival_date' => 'date',
             'qty_ordered' => 'decimal:2',
             'unit_price' => 'decimal:2',
             'subtotal' => 'decimal:2',
@@ -50,5 +63,10 @@ class PurchaseOrder extends Model
     public function vesselShipments(): HasMany
     {
         return $this->hasMany(VesselShipment::class);
+    }
+
+    public function materialReceives(): HasMany
+    {
+        return $this->hasMany(MaterialReceive::class);
     }
 }

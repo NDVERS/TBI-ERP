@@ -38,6 +38,7 @@ class ProductionDocket extends Model
         'water_act',
         'admixture_tar',
         'admixture_act',
+        'created_by',
     ];
 
     protected function casts(): array
@@ -68,5 +69,10 @@ class ProductionDocket extends Model
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

@@ -27,17 +27,18 @@ class EarlyWarningsAndAlertsTest extends TestCase
     {
         $admin = User::where('role', 'admin')->first();
 
-        // Update a material to have critical low stock (< 50,000 Kg)
-        // Pasir Lariang initially has 6,613.39 Kg, which is < 50,000 Kg
-        $pasirLariang = Material::where('name', 'Pasir Lariang')->first();
-        $this->assertLessThan(50000, (float) $pasirLariang->initial_stock_kg);
+        // SBTJM2 has critical low stock (< 5,000 Liter)
+        $sbtjm2 = Material::where('name', 'SBTJM2')->first();
+        $this->assertNotNull($sbtjm2);
+        $this->assertEquals('Liter', $sbtjm2->unit);
+        $this->assertLessThan(5000, (float) $sbtjm2->initial_stock_kg);
 
         $this->actingAs($admin);
 
         Livewire::test(ExecutiveDashboard::class)
             ->assertSee('Peringatan Dini:')
             ->assertSee('Bawah Stok Kritis')
-            ->assertSee('Pasir Lariang');
+            ->assertSee('SBTJM2');
     }
 
     public function test_vessel_shipment_form_shows_warning_for_high_shrinkage(): void

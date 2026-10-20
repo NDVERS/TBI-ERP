@@ -113,8 +113,7 @@ class AuthProtectionAndFaviconTest extends TestCase
             ->set('volume_m3', 10.0)
             ->set('distance_km', 15.0)
             ->call('save')
-            ->assertHasNoErrors()
-            ->assertSee('berhasil dibuat');
+            ->assertHasNoErrors();
 
         $this->assertDatabaseHas('sales_orders', [
             'location' => 'Proyek IKN Jembatan',

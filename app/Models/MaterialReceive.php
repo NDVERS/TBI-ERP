@@ -11,6 +11,7 @@ class MaterialReceive extends Model
     use HasFactory;
 
     protected $fillable = [
+        'purchase_order_id',
         'receive_date',
         'supplier_id',
         'material_id',
@@ -30,6 +31,11 @@ class MaterialReceive extends Model
             'density_used' => 'decimal:2',
             'total_weight_kg' => 'decimal:2',
         ];
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function supplier(): BelongsTo

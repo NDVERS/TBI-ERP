@@ -10,7 +10,6 @@ use App\Services\JobMixCalculatorService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,25 +18,99 @@ class SalesOrderForm extends Component
 {
     use WithPagination;
 
-    #[Rule('required|date')]
+    public const ALLOWED_MUTU_CODES = [
+        // Seri K (K-Series)
+        'K100 / C',
+        'K100 / R',
+        'K125 / C',
+        'K125 / R',
+        'K150 / C',
+        'K150 / R',
+        'K175 / C',
+        'K175 / R',
+        'K200 / C',
+        'K200 / R',
+        'K225 / C',
+        'K225 / R',
+        'K250 / C',
+        'K250 / R',
+        'K275 / C',
+        'K275 / R',
+        'K300 / C',
+        'K300 / R',
+        'K325 / C',
+        'K325 / R',
+        'K350 / C',
+        'K350 / R',
+        'K375 / C',
+        'K375 / R',
+        'K400 / C',
+        'K400 / R',
+        'K425 / C',
+        'K425 / R',
+        'K450 / C',
+        'K450 / R',
+        'K475 / C',
+        'K475 / R',
+        'K500 / C',
+        'K500 / R',
+        // Seri FC & FS (Megapascal & Flexural)
+        'FC10',
+        'FC15',
+        'FC20',
+        'FC25',
+        'FC30',
+        'FS45',
+    ];
+
     public string $order_date = '';
 
-    #[Rule('required|exists:customers,id')]
     public ?int $customer_id = null;
 
-    #[Rule('required|string|max:255')]
     public string $location = '';
 
-    #[Rule('required|exists:job_mixes,id')]
     public ?int $job_mix_id = null;
 
-    #[Rule('required|numeric|min:0.01|max:999999')]
     public string|float $volume_m3 = '';
 
-    #[Rule('required|numeric|min:0|max:9999')]
     public string|float $distance_km = '';
 
     public string $search = '';
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function rules(): array
+    {
+        return [
+            'order_date' => ['required', 'date'],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'location' => ['required', 'string', 'max:255'],
+            'job_mix_id' => [
+                'required',
+                'exists:job_mixes,id',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $jobMix = JobMix::find($value);
+                    if (! $jobMix || ! in_array($jobMix->mutu_code, self::ALLOWED_MUTU_CODES, true)) {
+                        $fail('Mutu beton yang dipilih tidak valid atau tidak termasuk dalam standar operasional TBI Plant.');
+                    }
+                },
+            ],
+            'volume_m3' => ['required', 'numeric', 'min:0.01', 'max:999999'],
+            'distance_km' => ['required', 'numeric', 'min:0', 'max:9999'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'job_mix_id.required' => 'Pilih mutu beton (job mix).',
+            'job_mix_id.exists' => 'Mutu beton yang dipilih tidak ditemukan di sistem.',
+        ];
+    }
 
     public function mount(): void
     {
@@ -47,11 +120,18 @@ class SalesOrderForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'kasir_logistik'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'kasir_logistik', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengakses modul Sales Order.');
         }
 
         $this->order_date = now()->format('Y-m-d');
+    }
+
+    public function updated(string $propertyName): void
+    {
+        if (in_array($propertyName, ['volume_m3', 'distance_km']) && is_string($this->{$propertyName})) {
+            $this->{$propertyName} = trim(str_replace(',', '.', $this->{$propertyName}));
+        }
     }
 
     public function save(
@@ -65,8 +145,15 @@ class SalesOrderForm extends Component
             return;
         }
 
-        if (! in_array(Auth::user()->role, ['admin', 'kasir_logistik'])) {
+        if (! in_array(Auth::user()->role, ['admin', 'kasir_logistik', 'demo'])) {
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk menginput Sales Order.');
+        }
+
+        if (is_string($this->volume_m3)) {
+            $this->volume_m3 = trim(str_replace(',', '.', $this->volume_m3));
+        }
+        if (is_string($this->distance_km)) {
+            $this->distance_km = trim(str_replace(',', '.', $this->distance_km));
         }
 
         $this->validate();
@@ -118,8 +205,16 @@ class SalesOrderForm extends Component
 
     public function render(): View
     {
-        $customers = Customer::orderBy('name')->get(['id', 'name', 'phone']);
-        $jobMixes = JobMix::orderBy('mutu_code')->get(['id', 'mutu_code', 'description']);
+        $customers = Customer::orderBy('name')->get(['id', 'name', 'address']);
+
+        $allowedMap = array_flip(self::ALLOWED_MUTU_CODES);
+        $jobMixes = JobMix::whereIn('mutu_code', self::ALLOWED_MUTU_CODES)
+            ->get(['id', 'mutu_code'])
+            ->sortBy(fn ($jm) => $allowedMap[$jm->mutu_code] ?? 999)
+            ->values();
+
+        $kSeriesJobMixes = $jobMixes->filter(fn ($jm) => str_starts_with($jm->mutu_code, 'K'))->values();
+        $fcFsJobMixes = $jobMixes->filter(fn ($jm) => ! str_starts_with($jm->mutu_code, 'K'))->values();
 
         $salesOrders = SalesOrder::query()
             ->with(['customer', 'jobMix'])
@@ -142,6 +237,8 @@ class SalesOrderForm extends Component
         return view('livewire.sales-order-form', [
             'customers' => $customers,
             'jobMixes' => $jobMixes,
+            'kSeriesJobMixes' => $kSeriesJobMixes,
+            'fcFsJobMixes' => $fcFsJobMixes,
             'salesOrders' => $salesOrders,
         ]);
     }

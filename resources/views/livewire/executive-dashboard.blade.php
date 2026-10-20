@@ -88,43 +88,97 @@
 
     {{-- 1. KPI Metrics Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {{-- Card 1: Total Penjualan Bulan Ini --}}
+        {{-- Card 1: Total Produksi Kumulatif Hari Ini --}}
         <div class="p-5 rounded-lg bg-white border border-zinc-200 shadow-xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Volume Penjualan SO</span>
+                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Kumulatif Cor Hari Ini</span>
                 <div class="w-8 h-8 rounded-md bg-zinc-100 flex items-center justify-center text-zinc-700">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                 </div>
             </div>
             <div class="mt-3">
                 <div class="text-2xl lg:text-3xl font-bold font-mono tabular-nums text-zinc-900">
-                    {{ number_format($totalSalesVolume, 2, ',', '.') }} <span class="text-base font-normal text-zinc-500">m³</span>
+                    {{ number_format($todayProductionVolume, 2, ',', '.') }} <span class="text-base font-normal text-zinc-500">m³</span>
                 </div>
                 <div class="text-xs text-zinc-500 mt-1 flex items-center gap-1">
-                    <span class="font-semibold text-zinc-800 font-mono">{{ $totalSalesOrders }}</span> pesanan order aktif
+                    <span class="font-semibold text-zinc-800 font-mono">{{ $todayDocketCount }}</span> tiket docket diterbitkan hari ini
                 </div>
             </div>
         </div>
 
-        {{-- Card 2: Total Material Masuk --}}
+        {{-- Card 2: Inbound Logistik PO Terdekat --}}
         <div class="p-5 rounded-lg bg-white border border-zinc-200 shadow-xs flex flex-col justify-between">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Material Masuk Inbound</span>
-                <div class="w-8 h-8 rounded-md bg-zinc-100 flex items-center justify-center text-zinc-700">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" />
-                    </svg>
+            <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+                <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">PO Logistik Terdekat</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 text-zinc-700">
+                        {{ $nearestPOs->count() }} Terdekat
+                    </span>
+                    <a href="{{ route('purchase-orders.index') }}" class="text-zinc-400 hover:text-zinc-700 transition-colors" title="Buka Modul PO">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                    </a>
                 </div>
             </div>
-            <div class="mt-3">
-                <div class="text-2xl lg:text-3xl font-bold font-mono tabular-nums text-zinc-900">
-                    {{ number_format($totalMaterialInKg / 1000, 2, ',', '.') }} <span class="text-base font-normal text-zinc-500">Ton</span>
-                </div>
-                <div class="text-xs text-zinc-500 mt-1 flex items-center gap-1">
-                    <span class="font-semibold text-zinc-800 font-mono">{{ $totalReceiveTrips }}</span> tiket truk timbangan
-                </div>
+
+            <div class="mt-2 space-y-2 max-h-44 overflow-y-auto pr-0.5">
+                @forelse ($nearestPOs as $po)
+                    @php
+                        $statusVariant = match ($po->status) {
+                            'Sudah Tiba di Pelabuhan' => 'emerald',
+                            'Penerimaan Sebagian' => 'blue',
+                            'Dalam Perjalanan' => 'amber',
+                            'Sudah Dimuat' => 'indigo',
+                            default => 'zinc',
+                        };
+
+                        $arrivalDate = $po->est_arrival_date ?? $po->actual_arrival_date;
+                        $etaLabel = '-';
+                        if ($arrivalDate) {
+                            $diffDays = (int) now()->startOfDay()->diffInDays($arrivalDate->copy()->startOfDay(), false);
+                            if ($diffDays === 0) {
+                                $etaText = 'Hari ini';
+                            } elseif ($diffDays === 1) {
+                                $etaText = 'Besok';
+                            } elseif ($diffDays > 1) {
+                                $etaText = "{$diffDays} hr lagi";
+                            } else {
+                                $absDays = abs($diffDays);
+                                $etaText = "{$absDays} hr lalu";
+                            }
+                            $etaLabel = $arrivalDate->format('d/m') . " ({$etaText})";
+                        }
+                    @endphp
+                    <div class="p-2 rounded bg-zinc-50 border border-zinc-100 hover:border-zinc-200 transition-colors text-xs">
+                        <div class="flex items-center justify-between gap-1">
+                            <span class="font-mono font-semibold text-zinc-900 truncate">
+                                {{ $po->po_number }}
+                            </span>
+                            <x-ui.badge :variant="$statusVariant" size="sm" class="text-[10px] px-1 py-0 font-normal">
+                                {{ $po->status }}
+                            </x-ui.badge>
+                        </div>
+                        <div class="flex items-center justify-between mt-1 text-[11px] text-zinc-600">
+                            <span class="truncate max-w-32 text-zinc-700" title="{{ $po->vessel_name ?: ($po->supplier->name ?? '-') }}">
+                                {{ $po->vessel_name ?: ($po->supplier->name ?? '-') }}
+                            </span>
+                            <span class="font-mono font-medium text-zinc-900 tabular-nums shrink-0">
+                                {{ number_format((float) $po->qty_ordered, 0, ',', '.') }} {{ $po->unit }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between mt-0.5 text-[10px] text-zinc-400 font-mono">
+                            <span class="truncate">{{ $po->material_type_input ?: ($po->material->name ?? '-') }}</span>
+                            <span class="text-zinc-600 font-medium shrink-0">ETA: {{ $etaLabel }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="py-4 text-center text-zinc-400 text-xs">
+                        Belum ada PO pengapalan aktif saat ini.
+                    </div>
+                @endforelse
             </div>
         </div>
 
@@ -142,14 +196,16 @@
                 <div class="text-2xl lg:text-3xl font-bold font-mono tabular-nums text-emerald-700">
                     {{ $sesuaiCount }} <span class="text-xs font-normal text-zinc-500 font-sans">Material Sesuai</span>
                 </div>
-                <div class="flex items-center gap-1.5 mt-1.5">
+                <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-amber-50 text-amber-700 border border-amber-200">
                         {{ $kelebihanCount }} Lebih
                     </span>
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-red-50 text-red-700 border border-red-200">
                         {{ $kekuranganCount }} Kurang
                     </span>
-                    <span class="text-[11px] text-zinc-400">Toleransi &le; 0.5%</span>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">
+                        {{ $belumDiopnameCount }} Belum Diopname
+                    </span>
                 </div>
             </div>
         </div>
@@ -175,13 +231,13 @@
         </div>
     </div>
 
-    {{-- 2. Visualisasi Data: Tabel SO Terbaru & Top Mutu Beton --}}
+    {{-- 2. Visualisasi Data: Tabel SO Rencana Cor Besok & Top Mutu Beton --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {{-- Tabel 5 Sales Order Terbaru (Col-span 2) --}}
+        {{-- Tabel 5 Sales Order Rencana Cor Besok (H+1) (Col-span 2) --}}
         <div class="lg:col-span-2">
             <x-ui.card
-                title="5 Sales Order Terbaru"
-                description="Transaksi pesanan cor ready-mix terakhir yang tercatat di sistem."
+                title="Jadwal Cor Besok (H+1)"
+                description="Rencana pengiriman beton ready-mix untuk persiapan armada."
             >
                 <x-slot:action>
                     <a
@@ -193,8 +249,8 @@
                     </a>
                 </x-slot:action>
 
-                <x-ui.table :headers="['No. SO', 'Tanggal', 'Customer', 'Lokasi Proyek', 'Mutu', 'Volume']">
-                    @forelse ($latestSalesOrders as $so)
+                <x-ui.table :headers="['No. SO', 'Tanggal Rencana', 'Customer', 'Lokasi Proyek', 'Mutu', 'Volume']">
+                    @forelse ($tomorrowSalesOrders as $so)
                         <tr class="hover:bg-zinc-50/80 transition-colors">
                             <td class="px-4 py-3 first:pl-5 font-mono font-semibold text-zinc-900 text-xs whitespace-nowrap">
                                 {{ $so->so_number }}
@@ -220,7 +276,7 @@
                     @empty
                         <tr>
                             <td colspan="6" class="px-5 py-6 text-center text-zinc-500 text-sm">
-                                Belum ada Sales Order yang terdaftar bulan ini.
+                                Belum ada Sales Order terjadwal untuk besok.
                             </td>
                         </tr>
                     @endforelse
@@ -298,6 +354,7 @@
                         'KEKURANGAN' => 'red',
                         default => 'zinc',
                     };
+                    $hasOpname = ! empty($row['has_opname']);
                 @endphp
                 <tr class="hover:bg-zinc-50/80 transition-colors">
                     <td class="px-4 py-3 first:pl-5 font-semibold text-zinc-900 whitespace-nowrap text-xs">
@@ -316,11 +373,19 @@
                     <td class="px-4 py-3 font-mono tabular-nums font-bold text-zinc-900 text-xs whitespace-nowrap bg-zinc-50/50">
                         {{ number_format((float) $row['stok_teoritis'], 2, ',', '.') }}
                     </td>
-                    <td class="px-4 py-3 font-mono tabular-nums font-bold text-blue-700 text-xs whitespace-nowrap">
-                        {{ number_format((float) $row['stok_fisik'], 2, ',', '.') }}
+                    <td class="px-4 py-3 font-mono tabular-nums font-bold text-xs whitespace-nowrap {{ $hasOpname ? 'text-blue-700' : 'text-zinc-400' }}">
+                        @if ($hasOpname)
+                            {{ number_format((float) $row['stok_fisik'], 2, ',', '.') }}
+                        @else
+                            <span class="font-normal text-[11px] text-zinc-400 italic">Belum Diopname</span>
+                        @endif
                     </td>
-                    <td class="px-4 py-3 font-mono tabular-nums text-xs whitespace-nowrap {{ (float) $row['selisih'] == 0 ? 'text-zinc-500' : ((float) $row['selisih'] > 0 ? 'text-red-600 font-medium' : 'text-amber-600 font-medium') }}">
-                        {{ (float) $row['selisih'] > 0 ? '-' : ((float) $row['selisih'] < 0 ? '+' : '') }}{{ number_format(abs((float) $row['selisih']), 2, ',', '.') }}
+                    <td class="px-4 py-3 font-mono tabular-nums text-xs whitespace-nowrap {{ ! $hasOpname ? 'text-zinc-400' : ((float) $row['selisih'] == 0 ? 'text-zinc-500' : ((float) $row['selisih'] > 0 ? 'text-red-600 font-medium' : 'text-amber-600 font-medium')) }}">
+                        @if ($hasOpname)
+                            {{ (float) $row['selisih'] > 0 ? '-' : ((float) $row['selisih'] < 0 ? '+' : '') }}{{ number_format(abs((float) $row['selisih']), 2, ',', '.') }}
+                        @else
+                            -
+                        @endif
                     </td>
                     <td class="px-4 py-3 last:pr-5 whitespace-nowrap">
                         <x-ui.badge :variant="$variant" size="sm">

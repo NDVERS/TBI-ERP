@@ -23,14 +23,20 @@
         </div>
     </div>
 
+
     {{-- Success Notification --}}
     @if (session()->has('success'))
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
-            <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div class="flex items-start gap-3 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm shadow-xs">
+            <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            <div class="font-medium">
-                {{ session('success') }}
+            <div class="flex-1">
+                <div class="font-bold text-emerald-950">
+                    Pengiriman Kapal Berhasil Dicatat
+                </div>
+                <div class="text-xs text-emerald-800 mt-0.5">
+                    {{ session('success') }}
+                </div>
             </div>
         </div>
     @endif
@@ -78,12 +84,15 @@
                 {{-- PO Terkait --}}
                 <x-ui.select
                     wire:model="purchase_order_id"
-                    label="Referensi Purchase Order (Opsional)"
+                    label="Referensi Purchase Order (Logistik Laut Aktif)"
                     name="purchase_order_id"
-                    placeholder="-- Pilih No. PO (Jika Ada) --"
+                    placeholder="-- Pilih No. PO (Sudah Dimuat / Dalam Perjalanan) --"
                 >
+                    <option value="">-- Tanpa Referensi PO --</option>
                     @foreach ($purchaseOrders as $po)
-                        <option value="{{ $po->id }}">{{ $po->po_number }}</option>
+                        <option value="{{ $po->id }}">
+                            [{{ $po->po_number }}] - {{ $po->vessel_name ?: 'Tongkang' }} ({{ $po->material_type_input ?: ($po->material->name ?? '-') }}) - {{ $po->status }}
+                        </option>
                     @endforeach
                 </x-ui.select>
 
@@ -180,6 +189,9 @@
                 wire:model.live.debounce.250ms="search"
                 placeholder="Cari hasil lab atau no. PO..."
                 prefix="🔍"
+                :clearable="true"
+                :has-value="!empty($search)"
+                loading-target="search"
             />
         </div>
 
