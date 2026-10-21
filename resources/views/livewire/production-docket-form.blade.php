@@ -618,8 +618,10 @@
             @endforelse
         </x-ui.table>
 
-        <div class="p-4 border-t border-zinc-200">
-            {{ $dockets->links() }}
-        </div>
+        @if ($dockets->hasPages())
+            <div class="pt-4">
+                {{ $dockets->links() }}
+            </div>
+        @endif
     </x-ui.card>
 </div>
