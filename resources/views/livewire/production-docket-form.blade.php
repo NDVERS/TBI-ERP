@@ -593,6 +593,20 @@
                                 . "Operator Plant: " . ($d->creator?->name ?? 'TBI Operator');
                         @endphp
                         <div class="inline-flex items-center gap-1.5 justify-end">
+                            @if (auth()->user()?->role === 'admin')
+                                <button
+                                    type="button"
+                                    wire:click="openEditModal({{ $d->id }})"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-2xs"
+                                    title="Edit Data Surat Jalan (Khusus Admin Master)"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span>Edit</span>
+                                </button>
+                            @endif
+
                             <a
                                 href="{{ route('production-dockets.pdf', $d) }}"
                                 target="_blank"
@@ -624,4 +638,214 @@
             </div>
         @endif
     </x-ui.card>
+
+    {{-- Modal Edit Surat Jalan (Khusus Admin / Master) --}}
+    @if ($showEditModal)
+        <div
+            @keydown.escape.window="$wire.closeEditModal()"
+            wire:click.self="closeEditModal"
+            class="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/50 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+            <div class="bg-white rounded-lg border border-zinc-200 shadow-xl max-w-2xl w-full p-6 space-y-4 cursor-default max-h-[90vh] flex flex-col">
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between pb-3 border-b border-zinc-100 shrink-0">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-bold text-zinc-900">
+                                Edit Surat Jalan Produksi
+                            </h3>
+                            <span class="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                Khusus Admin
+                            </span>
+                        </div>
+                        <p class="text-xs font-mono text-zinc-500 mt-0.5">
+                            Docket: <span class="font-bold text-zinc-700">{{ $edit_docket_no }}</span>
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        wire:click="closeEditModal"
+                        class="text-zinc-400 hover:text-zinc-600 p-1 rounded-md transition-colors"
+                        title="Tutup Modal"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {{-- Modal Body (Scrollable Form) --}}
+                <form wire:submit.prevent="updateDocket" class="space-y-4 overflow-y-auto pr-1 flex-1">
+                    {{-- Section 1: Informasi Dokumen & Waktu --}}
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                            Informasi Dokumen & Pengiriman
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <x-ui.input
+                                wire:model="edit_docket_no"
+                                label="Nomor Docket *"
+                                name="edit_docket_no"
+                                mono
+                                required
+                            />
+                            <x-ui.input
+                                wire:model="edit_truck_no"
+                                label="Nomor Truck Mixer *"
+                                name="edit_truck_no"
+                                mono
+                                placeholder="Contoh: TM-01"
+                                required
+                            />
+                            <x-ui.input
+                                wire:model="edit_production_date"
+                                label="Tanggal Produksi *"
+                                name="edit_production_date"
+                                type="date"
+                                required
+                            />
+                            <x-ui.input
+                                wire:model="edit_time_load"
+                                label="Jam Loading (WITA) *"
+                                name="edit_time_load"
+                                type="time"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {{-- Section 2: Customer & Mutu Beton --}}
+                    <div class="pt-2 border-t border-zinc-100">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                            Customer, Proyek & Mutu
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="sm:col-span-2">
+                                <x-ui.input
+                                    wire:model="edit_customer_name"
+                                    label="Nama Customer *"
+                                    name="edit_customer_name"
+                                    required
+                                />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-ui.input
+                                    wire:model="edit_address"
+                                    label="Alamat / Lokasi Proyek"
+                                    name="edit_address"
+                                    placeholder="Contoh: Jl. Poros Samarinda - Bontang"
+                                />
+                            </div>
+                            <x-ui.input
+                                wire:model="edit_mutu_code"
+                                label="Mutu Beton *"
+                                name="edit_mutu_code"
+                                mono
+                                placeholder="Contoh: K 300, FC 20"
+                                required
+                            />
+                            <x-ui.input
+                                wire:model="edit_volume_m3"
+                                label="Volume (m³) *"
+                                name="edit_volume_m3"
+                                type="text"
+                                suffix="m³"
+                                mono
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {{-- Section 3: Komposisi Batching Aktual --}}
+                    <div class="pt-2 border-t border-zinc-100">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                            Komposisi Batching Aktual (kg)
+                        </h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <x-ui.input
+                                wire:model="edit_silo1_act"
+                                label="Silo 1 (Semen)"
+                                name="edit_silo1_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_silo2_act"
+                                label="Silo 2 (Fly Ash)"
+                                name="edit_silo2_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_pasir_palu_act"
+                                label="Pasir Palu"
+                                name="edit_pasir_palu_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_pasir_lokal_act"
+                                label="Pasir Lokal"
+                                name="edit_pasir_lokal_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_split_1_2_act"
+                                label="Split 1/2"
+                                name="edit_split_1_2_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_split_2_3_act"
+                                label="Split 2/3"
+                                name="edit_split_2_3_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_water_act"
+                                label="Air (Water)"
+                                name="edit_water_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                            <x-ui.input
+                                wire:model="edit_admixture_act"
+                                label="Admixture"
+                                name="edit_admixture_act"
+                                type="text"
+                                suffix="kg"
+                                mono
+                            />
+                        </div>
+                    </div>
+
+                    {{-- Modal Footer --}}
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 shrink-0">
+                        <x-ui.button
+                            type="button"
+                            variant="secondary"
+                            wire:click="closeEditModal"
+                        >
+                            Batal
+                        </x-ui.button>
+                        <x-ui.button
+                            type="submit"
+                            variant="primary"
+                        >
+                            Simpan Perubahan
+                        </x-ui.button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 </div>
+

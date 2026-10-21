@@ -81,6 +81,45 @@ class ProductionDocketForm extends Component
 
     public ?string $filterEndDate = null;
 
+    // Edit Modal State (Khusus Admin / Master)
+    public bool $showEditModal = false;
+
+    public ?int $editingDocketId = null;
+
+    public string $edit_docket_no = '';
+
+    public string $edit_production_date = '';
+
+    public string $edit_time_load = '';
+
+    public ?int $edit_sales_order_id = null;
+
+    public string $edit_customer_name = '';
+
+    public string $edit_address = '';
+
+    public string $edit_mutu_code = '';
+
+    public string $edit_truck_no = '';
+
+    public string|float $edit_volume_m3 = '';
+
+    public string|float $edit_silo1_act = '';
+
+    public string|float $edit_silo2_act = '';
+
+    public string|float $edit_pasir_palu_act = '';
+
+    public string|float $edit_pasir_lokal_act = '';
+
+    public string|float $edit_split_1_2_act = '';
+
+    public string|float $edit_split_2_3_act = '';
+
+    public string|float $edit_water_act = '';
+
+    public string|float $edit_admixture_act = '';
+
     public const ALLOWED_MUTU_CODES = [
         // Seri K (K-Series)
         'K100 / C', 'K100 / R',
@@ -461,6 +500,114 @@ class ProductionDocketForm extends Component
         // Update jam ke waktu terkini
         $this->time_load = Carbon::now('Asia/Makassar')->format('H:i');
         $this->dispatch('form-saved');
+    }
+
+    public function openEditModal(int $id): void
+    {
+        if (! Auth::check() || Auth::user()->role !== 'admin') {
+            abort(403, 'Akses Ditolak: Hanya Admin (Master) yang memiliki izin untuk mengedit Surat Jalan Produksi.');
+        }
+
+        $this->resetErrorBag();
+        $docket = ProductionDocket::findOrFail($id);
+
+        $this->editingDocketId = $docket->id;
+        $this->edit_docket_no = $docket->docket_no;
+        $this->edit_production_date = $docket->production_date ? Carbon::parse($docket->production_date)->format('Y-m-d') : '';
+        $this->edit_time_load = $docket->time_load ? substr($docket->time_load, 0, 5) : '';
+        $this->edit_sales_order_id = $docket->sales_order_id;
+        $this->edit_customer_name = $docket->customer_name;
+        $this->edit_address = $docket->address ?? '';
+        $this->edit_mutu_code = $docket->mutu_code;
+        $this->edit_truck_no = $docket->truck_no;
+        $this->edit_volume_m3 = (float) $docket->volume_m3;
+        $this->edit_silo1_act = (float) $docket->silo1_act;
+        $this->edit_silo2_act = (float) $docket->silo2_act;
+        $this->edit_pasir_palu_act = (float) $docket->pasir_palu_act;
+        $this->edit_pasir_lokal_act = (float) $docket->pasir_lokal_act;
+        $this->edit_split_1_2_act = (float) $docket->split_1_2_act;
+        $this->edit_split_2_3_act = (float) $docket->split_2_3_act;
+        $this->edit_water_act = (float) $docket->water_act;
+        $this->edit_admixture_act = (float) $docket->admixture_act;
+
+        $this->showEditModal = true;
+    }
+
+    public function closeEditModal(): void
+    {
+        $this->showEditModal = false;
+        $this->editingDocketId = null;
+        $this->resetErrorBag();
+    }
+
+    public function updateDocket(): void
+    {
+        if (! Auth::check() || Auth::user()->role !== 'admin') {
+            abort(403, 'Akses Ditolak: Hanya Admin (Master) yang memiliki izin untuk mengedit Surat Jalan Produksi.');
+        }
+
+        $this->edit_volume_m3 = str_replace(',', '.', (string) $this->edit_volume_m3);
+        $this->edit_silo1_act = str_replace(',', '.', (string) $this->edit_silo1_act);
+        $this->edit_silo2_act = str_replace(',', '.', (string) ($this->edit_silo2_act ?: '0'));
+        $this->edit_pasir_palu_act = str_replace(',', '.', (string) $this->edit_pasir_palu_act);
+        $this->edit_pasir_lokal_act = str_replace(',', '.', (string) $this->edit_pasir_lokal_act);
+        $this->edit_split_1_2_act = str_replace(',', '.', (string) $this->edit_split_1_2_act);
+        $this->edit_split_2_3_act = str_replace(',', '.', (string) $this->edit_split_2_3_act);
+        $this->edit_water_act = str_replace(',', '.', (string) $this->edit_water_act);
+        $this->edit_admixture_act = str_replace(',', '.', (string) $this->edit_admixture_act);
+
+        $this->validate([
+            'edit_docket_no' => 'required|string|max:50',
+            'edit_production_date' => 'required|date',
+            'edit_time_load' => 'required|string',
+            'edit_customer_name' => 'required|string|max:255',
+            'edit_address' => 'nullable|string|max:255',
+            'edit_mutu_code' => 'required|string|max:50',
+            'edit_truck_no' => 'required|string|max:50',
+            'edit_volume_m3' => 'required|numeric|min:0.01|max:100',
+            'edit_silo1_act' => 'required|numeric|min:0',
+            'edit_silo2_act' => 'nullable|numeric|min:0',
+            'edit_pasir_palu_act' => 'required|numeric|min:0',
+            'edit_pasir_lokal_act' => 'required|numeric|min:0',
+            'edit_split_1_2_act' => 'required|numeric|min:0',
+            'edit_split_2_3_act' => 'required|numeric|min:0',
+            'edit_water_act' => 'required|numeric|min:0',
+            'edit_admixture_act' => 'required|numeric|min:0',
+        ]);
+
+        $docket = ProductionDocket::findOrFail($this->editingDocketId);
+
+        $docket->update([
+            'docket_no' => strtoupper(trim($this->edit_docket_no)),
+            'production_date' => $this->edit_production_date,
+            'time_load' => strlen($this->edit_time_load) === 5 ? $this->edit_time_load.':00' : $this->edit_time_load,
+            'customer_name' => strtoupper(trim($this->edit_customer_name)),
+            'address' => ! empty($this->edit_address) ? strtoupper(trim($this->edit_address)) : null,
+            'mutu_code' => strtoupper(trim($this->edit_mutu_code)),
+            'truck_no' => $this->formatTruckNo($this->edit_truck_no),
+            'volume_m3' => (float) $this->edit_volume_m3,
+            'silo1_act' => (float) $this->edit_silo1_act,
+            'silo2_act' => (float) ($this->edit_silo2_act ?: 0),
+            'pasir_palu_act' => (float) $this->edit_pasir_palu_act,
+            'pasir_lokal_act' => (float) $this->edit_pasir_lokal_act,
+            'split_1_2_act' => (float) $this->edit_split_1_2_act,
+            'split_2_3_act' => (float) $this->edit_split_2_3_act,
+            'water_act' => (float) $this->edit_water_act,
+            'admixture_act' => (float) $this->edit_admixture_act,
+        ]);
+
+        // Audit Trail
+        ActivityLog::log(
+            'edit_production_docket',
+            'Admin '.Auth::user()->name." mengedit Surat Jalan {$docket->docket_no} (Customer: {$docket->customer_name}, Vol: {$docket->volume_m3} m³)",
+            $docket
+        );
+
+        $this->showEditModal = false;
+        $this->editingDocketId = null;
+
+        session()->flash('success', "Surat Jalan ({$docket->docket_no}) berhasil diperbarui oleh Admin.");
+        $this->dispatch('docket-updated');
     }
 
     public function render(StockReconciliationService $reconService): View

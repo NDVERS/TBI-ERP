@@ -14,6 +14,7 @@ use App\Services\StockReconciliationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class ProductionDocketTest extends TestCase
@@ -410,5 +411,48 @@ class ProductionDocketTest extends TestCase
             ->assertSee('FC20')
             ->assertSee('FC30')
             ->assertSee('FS45');
+    }
+
+    public function test_only_admin_can_open_edit_modal_and_update_production_docket(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $docket = ProductionDocket::first();
+
+        Livewire::actingAs($admin)
+            ->test(ProductionDocketForm::class)
+            ->assertSee('Edit')
+            ->call('openEditModal', $docket->id)
+            ->assertSet('showEditModal', true)
+            ->assertSet('editingDocketId', $docket->id)
+            ->set('edit_customer_name', 'PT KARYA REVISI')
+            ->set('edit_mutu_code', 'K 350')
+            ->set('edit_volume_m3', '7.00')
+            ->call('updateDocket')
+            ->assertHasNoErrors()
+            ->assertSet('showEditModal', false);
+
+        $docket->refresh();
+        $this->assertEquals('PT KARYA REVISI', $docket->customer_name);
+        $this->assertEquals('K 350', $docket->mutu_code);
+        $this->assertEquals(7.00, (float) $docket->volume_m3);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $admin->id,
+            'action' => 'edit_production_docket',
+            'model_id' => $docket->id,
+        ]);
+    }
+
+    public function test_non_admin_cannot_edit_production_docket(): void
+    {
+        $operator = User::factory()->create(['role' => 'operator_produksi']);
+        $docket = ProductionDocket::first();
+
+        // Di tampilan tidak boleh ada tombol Edit
+        Livewire::actingAs($operator)
+            ->test(ProductionDocketForm::class)
+            ->assertDontSee('Edit Data Surat Jalan (Khusus Admin Master)')
+            ->call('openEditModal', $docket->id)
+            ->assertStatus(403);
     }
 }
