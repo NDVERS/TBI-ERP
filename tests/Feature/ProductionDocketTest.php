@@ -14,7 +14,6 @@ use App\Services\StockReconciliationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class ProductionDocketTest extends TestCase
@@ -454,5 +453,19 @@ class ProductionDocketTest extends TestCase
             ->assertDontSee('Edit Data Surat Jalan (Khusus Admin Master)')
             ->call('openEditModal', $docket->id)
             ->assertStatus(403);
+    }
+
+    public function test_pagination_supports_custom_per_page_and_compact_navigation(): void
+    {
+        $operator = User::factory()->create(['role' => 'operator_produksi']);
+
+        Livewire::actingAs($operator)
+            ->test(ProductionDocketForm::class)
+            ->assertSee('Tampilkan:')
+            ->assertSee('Ke hal:')
+            ->set('perPage', 25)
+            ->assertSet('perPage', 25)
+            ->call('gotoPage', 2)
+            ->assertSet('paginators.page', 2);
     }
 }

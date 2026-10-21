@@ -68,6 +68,13 @@ class PurchaseOrderForm extends Component
 
     public ?string $filterEndDate = null;
 
+    public int $perPage = 10;
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     // Quick Edit Status & Logistics Modal Properties
     public bool $show_edit_modal = false;
 
@@ -470,7 +477,7 @@ class PurchaseOrderForm extends Component
             ->when($this->filterEndDate, fn ($q) => $q->whereDate('po_date', '<=', $this->filterEndDate))
             ->latest('po_date')
             ->latest('id')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.purchase-order-form', [
             'suppliers' => $suppliers,

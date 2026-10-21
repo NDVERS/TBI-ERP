@@ -81,6 +81,8 @@ class ProductionDocketForm extends Component
 
     public ?string $filterEndDate = null;
 
+    public int $perPage = 10;
+
     // Edit Modal State (Khusus Admin / Master)
     public bool $showEditModal = false;
 
@@ -235,6 +237,11 @@ class ProductionDocketForm extends Component
             $this->customer_name = '';
             $this->address = '';
         }
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
     }
 
     public function updatedMutuCode(string $value): void
@@ -636,7 +643,7 @@ class ProductionDocketForm extends Component
             ->when($this->filterStartDate, fn ($q) => $q->whereDate('production_date', '>=', $this->filterStartDate))
             ->when($this->filterEndDate, fn ($q) => $q->whereDate('production_date', '<=', $this->filterEndDate))
             ->latest('id')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         $kSeriesMutuList = array_values(array_filter($this->mutuList, fn ($m) => str_starts_with($m, 'K')));
         $fcFsMutuList = array_values(array_filter($this->mutuList, fn ($m) => ! str_starts_with($m, 'K')));
