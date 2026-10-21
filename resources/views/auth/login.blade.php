@@ -6,16 +6,11 @@
 
     <div class="min-h-[75vh] flex flex-col justify-center items-center py-6 sm:px-6 lg:px-8">
         <div class="sm:mx-auto sm:w-full sm:max-w-md">
-            <div class="flex items-center justify-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-md bg-zinc-900 text-white font-bold flex items-center justify-center text-base tracking-wider">
-                    TBI
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-lg font-bold text-zinc-900 leading-tight tracking-tight">TBI ERP</span>
-                    <span class="text-xs text-zinc-500 font-mono">Batching Plant System</span>
-                </div>
+            <div class="flex flex-col items-center justify-center mb-3">
+                <img src="{{ asset('images/logo.png') }}" alt="TB Beton Indonesia" class="h-16 w-auto object-contain mb-1">
+                <span class="text-xs text-zinc-500 font-mono tracking-tight">Batching Plant ERP System</span>
             </div>
-            <h2 class="text-center text-xl font-bold tracking-tight text-zinc-900 mt-2">
+            <h2 class="text-center text-xl font-bold tracking-tight text-zinc-900 mt-1">
                 Masuk ke Sistem Operasional
             </h2>
             <p class="mt-1 text-center text-xs text-zinc-500">

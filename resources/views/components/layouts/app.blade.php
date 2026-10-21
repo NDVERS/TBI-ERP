@@ -16,6 +16,7 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
     {{ $head ?? '' }}
 
     <!-- Scripts & Styles -->
@@ -45,14 +46,11 @@
     >
         <!-- Sidebar Header -->
         <div class="flex flex-col">
-            <div class="h-16 px-5 flex items-center justify-between border-b border-zinc-100">
-                <a href="{{ url('/') }}" class="flex items-center gap-3 group">
-                    <div class="w-8 h-8 rounded-md bg-zinc-900 text-white font-bold flex items-center justify-center text-sm tracking-wider">
-                        TBI
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-semibold text-zinc-900 leading-tight tracking-tight">TBI ERP</span>
-                        <span class="text-[11px] text-zinc-500 font-mono">Batching Plant</span>
+            <div class="h-16 px-4 flex items-center justify-between border-b border-zinc-100">
+                <a href="{{ url('/') }}" class="flex items-center gap-2.5 group min-w-0">
+                    <img src="{{ asset('images/logo.png') }}" alt="TB Beton Indonesia" class="h-9 w-auto max-w-32 object-contain">
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-[11px] font-bold text-zinc-900 leading-tight tracking-tight uppercase">ERP Plant</span>
                     </div>
                 </a>
 
