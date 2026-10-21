@@ -71,8 +71,8 @@
                             @csrf
                             <input type="hidden" name="quick_role" value="demo">
                             <button type="submit" @click="email = 'demo@tbi.com'; password = 'password'" class="w-full py-2 px-2.5 rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-left transition-colors">
-                                <div class="font-bold text-zinc-900">Akun Demo</div>
-                                <div class="text-[10px] text-zinc-500">Akses Terbatas / Evaluasi</div>
+                                <div class="font-bold text-zinc-900">Akun Demo / Akses Terbatas</div>
+                                <div class="text-[10px] text-zinc-500">Evaluasi Semua Modul</div>
                             </button>
                         </form>
                     </div>
