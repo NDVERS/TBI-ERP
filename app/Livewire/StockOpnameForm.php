@@ -30,6 +30,18 @@ class StockOpnameForm extends Component
     #[Rule('required|numeric|min:0.01|max:999')]
     public string|float $tinggi = '';
 
+    // Mode Input Limas: 'sisi' (Panjang & Lebar) atau 'luas' (Luas Langsung)
+    public string $limas_input_mode = 'sisi';
+
+    // Dimensi Sisi Limas Terpancung (Meter)
+    public string|float $pa = '';
+
+    public string|float $la_side = '';
+
+    public string|float $pb = '';
+
+    public string|float $lb_side = '';
+
     // Dimensi Limas Terpancung: Luas Bidang Atas (La) & Bawah (Lb)
     public string|float $la = '';
 
@@ -90,14 +102,30 @@ class StockOpnameForm extends Component
 
     public function updated(string $propertyName): void
     {
-        if (in_array($propertyName, ['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin']) && is_string($this->{$propertyName})) {
+        $dimensionProps = ['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin', 'pa', 'la_side', 'pb', 'lb_side'];
+        if (in_array($propertyName, $dimensionProps) && is_string($this->{$propertyName})) {
             $this->{$propertyName} = trim(str_replace(',', '.', $this->{$propertyName}));
+        }
+
+        // Otomatis hitung Luas Atas (La) jika pa dan la_side diisi
+        if (in_array($propertyName, ['pa', 'la_side']) && $this->limas_input_mode === 'sisi') {
+            $p = (float) str_replace(',', '.', (string) $this->pa);
+            $l = (float) str_replace(',', '.', (string) $this->la_side);
+            $this->la = ($p > 0 && $l > 0) ? round($p * $l, 2) : '';
+        }
+
+        // Otomatis hitung Luas Bawah (Lb) jika pb dan lb_side diisi
+        if (in_array($propertyName, ['pb', 'lb_side']) && $this->limas_input_mode === 'sisi') {
+            $p = (float) str_replace(',', '.', (string) $this->pb);
+            $l = (float) str_replace(',', '.', (string) $this->lb_side);
+            $this->lb = ($p > 0 && $l > 0) ? round($p * $l, 2) : '';
         }
     }
 
     private function normalizeDecimals(): void
     {
-        foreach (['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin'] as $prop) {
+        $dimensionProps = ['tinggi', 'la', 'lb', 'ra', 'rb', 'stock_bin', 'pa', 'la_side', 'pb', 'lb_side'];
+        foreach ($dimensionProps as $prop) {
             if (is_string($this->{$prop})) {
                 $this->{$prop} = trim(str_replace(',', '.', $this->{$prop}));
             }
@@ -134,8 +162,20 @@ class StockOpnameForm extends Component
         ];
 
         if ($this->shape_type === 'limas_terpancung') {
-            $rules['la'] = 'required|numeric|min:0.01|max:99999';
-            $rules['lb'] = 'required|numeric|min:0.01|max:99999';
+            if ($this->limas_input_mode === 'sisi') {
+                if (! empty($this->la) && ! empty($this->lb) && empty($this->pa) && empty($this->pb)) {
+                    $rules['la'] = 'required|numeric|min:0.01|max:99999';
+                    $rules['lb'] = 'required|numeric|min:0.01|max:99999';
+                } else {
+                    $rules['pa'] = 'required|numeric|min:0.01|max:9999';
+                    $rules['la_side'] = 'required|numeric|min:0.01|max:9999';
+                    $rules['pb'] = 'required|numeric|min:0.01|max:9999';
+                    $rules['lb_side'] = 'required|numeric|min:0.01|max:9999';
+                }
+            } else {
+                $rules['la'] = 'required|numeric|min:0.01|max:99999';
+                $rules['lb'] = 'required|numeric|min:0.01|max:99999';
+            }
         } else {
             $rules['ra'] = 'required|numeric|min:0.01|max:999';
             $rules['rb'] = 'required|numeric|min:0.01|max:999';
@@ -143,11 +183,21 @@ class StockOpnameForm extends Component
 
         $this->validate($rules, [
             'tinggi.required' => 'Tinggi timbunan (t) wajib diisi.',
-            'la.required' => 'Luas bidang atas (La) wajib diisi untuk bentuk limas.',
-            'lb.required' => 'Luas bidang bawah (Lb) wajib diisi untuk bentuk limas.',
+            'pa.required' => 'Panjang bidang atas (pa) wajib diisi.',
+            'la_side.required' => 'Lebar bidang atas (la) wajib diisi.',
+            'pb.required' => 'Panjang bidang bawah (pb) wajib diisi.',
+            'lb_side.required' => 'Lebar bidang bawah (lb) wajib diisi.',
+            'la.required' => 'Luas bidang atas (La) wajib diisi.',
+            'lb.required' => 'Luas bidang bawah (Lb) wajib diisi.',
             'ra.required' => 'Jari-jari atas (Ra) wajib diisi untuk bentuk kerucut.',
             'rb.required' => 'Jari-jari bawah (Rb) wajib diisi untuk bentuk kerucut.',
         ]);
+
+        // Hitung luas atas dan bawah jika mode sisi
+        if ($this->shape_type === 'limas_terpancung' && $this->limas_input_mode === 'sisi' && ! empty($this->pa) && ! empty($this->la_side)) {
+            $this->la = round((float) $this->pa * (float) $this->la_side, 2);
+            $this->lb = round((float) $this->pb * (float) $this->lb_side, 2);
+        }
 
         $material = Material::findOrFail($this->material_id);
         $isSemen = (strcasecmp($material->name, 'Semen') === 0 || strtoupper($material->unit) === 'TON');
@@ -159,6 +209,7 @@ class StockOpnameForm extends Component
 
         $dimensions = [
             'shape' => $this->shape_type,
+            'input_mode' => $this->limas_input_mode,
             'tinggi' => (float) $this->tinggi,
             'stock_bin' => $stockBinKg,
             'stock_bin_input' => $stockBinVal,
@@ -168,6 +219,12 @@ class StockOpnameForm extends Component
         if ($this->shape_type === 'limas_terpancung') {
             $dimensions['la'] = (float) $this->la;
             $dimensions['lb'] = (float) $this->lb;
+            if (! empty($this->pa)) {
+                $dimensions['pa'] = (float) $this->pa;
+                $dimensions['la_side'] = (float) $this->la_side;
+                $dimensions['pb'] = (float) $this->pb;
+                $dimensions['lb_side'] = (float) $this->lb_side;
+            }
         } else {
             $dimensions['ra'] = (float) $this->ra;
             $dimensions['rb'] = (float) $this->rb;
@@ -193,6 +250,10 @@ class StockOpnameForm extends Component
         // Reset form inputs except date & shape
         $this->material_id = null;
         $this->tinggi = '';
+        $this->pa = '';
+        $this->la_side = '';
+        $this->pb = '';
+        $this->lb_side = '';
         $this->la = '';
         $this->lb = '';
         $this->ra = '';

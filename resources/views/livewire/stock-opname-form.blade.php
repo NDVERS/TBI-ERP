@@ -136,52 +136,209 @@
                 </div>
 
                 @if ($shape_type === 'limas_terpancung')
-                    {{-- Bidang Limas Terpancung: La dan Lb --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs md:text-sm font-medium text-zinc-700 mb-1">
-                                Luas Bidang Atas ($L_a$) <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    inputmode="decimal"
-                                    wire:model="la"
-                                    placeholder="0.00"
-                                    class="w-full h-12 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
-                                    required
-                                />
-                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
-                                    m²
-                                </span>
+                    {{-- Selector Mode: Dimensi Sisi (P × L) vs Luas Langsung (m²) --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-200">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-zinc-700">Metode Input:</span>
+                            <div class="inline-flex rounded-lg border border-zinc-200 bg-white p-0.5 text-xs font-medium shadow-2xs">
+                                <button
+                                    type="button"
+                                    wire:click="$set('limas_input_mode', 'sisi')"
+                                    class="px-2.5 py-1 rounded-md transition-all {{ $limas_input_mode === 'sisi' ? 'bg-zinc-900 font-bold text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                                >
+                                    📐 Ukur Sisi (P &times; L)
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="$set('limas_input_mode', 'luas')"
+                                    class="px-2.5 py-1 rounded-md transition-all {{ $limas_input_mode === 'luas' ? 'bg-zinc-900 font-bold text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                                >
+                                    📊 Luas Langsung (m²)
+                                </button>
                             </div>
-                            @error('la')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
-
-                        <div>
-                            <label class="block text-xs md:text-sm font-medium text-zinc-700 mb-1">
-                                Luas Bidang Bawah ($L_b$) <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    inputmode="decimal"
-                                    wire:model="lb"
-                                    placeholder="0.00"
-                                    class="w-full h-12 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
-                                    required
-                                />
-                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
-                                    m²
-                                </span>
-                            </div>
-                            @error('lb')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        <span class="text-[11px] text-zinc-400 font-mono">
+                            {{ $limas_input_mode === 'sisi' ? 'Cukup masukkan meteran panjang & lebar lapangan' : 'Gunakan jika luas sudah dihitung sebelumnya' }}
+                        </span>
                     </div>
+
+                    @if ($limas_input_mode === 'sisi')
+                        {{-- Mode Sisi: Puncak (pa × la) dan Dasar (pb × lb) --}}
+                        <div class="space-y-4">
+                            {{-- 1. Bidang Atas (Puncak Timbunan) --}}
+                            <div class="p-3.5 rounded-lg bg-white border border-zinc-200/90 shadow-2xs space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                                            Bidang Atas (Puncak Timbunan)
+                                        </span>
+                                    </div>
+                                    @if ($la)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                            Luas ($L_a$): {{ number_format((float) $la, 2, ',', '.') }} m²
+                                        </span>
+                                    @endif
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 mb-1">
+                                            Panjang Atas ($p_a$) <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                wire:model.live.debounce.250ms="pa"
+                                                placeholder="0.00"
+                                                class="w-full h-11 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                                required
+                                            />
+                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                                meter
+                                            </span>
+                                        </div>
+                                        @error('pa')
+                                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 mb-1">
+                                            Lebar Atas ($l_a$) <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                wire:model.live.debounce.250ms="la_side"
+                                                placeholder="0.00"
+                                                class="w-full h-11 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                                required
+                                            />
+                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                                meter
+                                            </span>
+                                        </div>
+                                        @error('la_side')
+                                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- 2. Bidang Bawah (Dasar / Kaki Timbunan) --}}
+                            <div class="p-3.5 rounded-lg bg-white border border-zinc-200/90 shadow-2xs space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-zinc-900"></span>
+                                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                                            Bidang Bawah (Dasar / Kaki Timbunan)
+                                        </span>
+                                    </div>
+                                    @if ($lb)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                            Luas ($L_b$): {{ number_format((float) $lb, 2, ',', '.') }} m²
+                                        </span>
+                                    @endif
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 mb-1">
+                                            Panjang Bawah ($p_b$) <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                wire:model.live.debounce.250ms="pb"
+                                                placeholder="0.00"
+                                                class="w-full h-11 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                                required
+                                            />
+                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                                meter
+                                            </span>
+                                        </div>
+                                        @error('pb')
+                                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 mb-1">
+                                            Lebar Bawah ($l_b$) <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                inputmode="decimal"
+                                                wire:model.live.debounce.250ms="lb_side"
+                                                placeholder="0.00"
+                                                class="w-full h-11 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                                required
+                                            />
+                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                                meter
+                                            </span>
+                                        </div>
+                                        @error('lb_side')
+                                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Mode Luas Langsung: La dan Lb --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs md:text-sm font-medium text-zinc-700 mb-1">
+                                    Luas Bidang Atas ($L_a$) <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        wire:model="la"
+                                        placeholder="0.00"
+                                        class="w-full h-12 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                        required
+                                    />
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                        m²
+                                    </span>
+                                </div>
+                                @error('la')
+                                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs md:text-sm font-medium text-zinc-700 mb-1">
+                                    Luas Bidang Bawah ($L_b$) <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        wire:model="lb"
+                                        placeholder="0.00"
+                                        class="w-full h-12 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
+                                        required
+                                    />
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
+                                        m²
+                                    </span>
+                                </div>
+                                @error('lb')
+                                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                    @endif
                 @else
                     {{-- Bidang Kerucut Terpancung: Ra dan Rb --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -331,9 +488,18 @@
                         @endphp
                         <div>t: {{ $tinggi }} m</div>
                         @if ($opname->method === 'limas_terpancung')
-                            <div class="text-[11px] text-zinc-500">
-                                La: {{ $d['la'] ?? '-' }} m², Lb: {{ $d['lb'] ?? '-' }} m²
-                            </div>
+                            @if (!empty($d['pa']) && !empty($d['la_side']))
+                                <div class="text-[11px] text-zinc-600 font-medium">
+                                    Atas: {{ $d['pa'] }}m × {{ $d['la_side'] }}m <span class="text-zinc-400">({{ $d['la'] ?? '-' }} m²)</span>
+                                </div>
+                                <div class="text-[11px] text-zinc-600 font-medium">
+                                    Bawah: {{ $d['pb'] ?? '-' }}m × {{ $d['lb_side'] ?? '-' }}m <span class="text-zinc-400">({{ $d['lb'] ?? '-' }} m²)</span>
+                                </div>
+                            @else
+                                <div class="text-[11px] text-zinc-500">
+                                    La: {{ $d['la'] ?? '-' }} m², Lb: {{ $d['lb'] ?? '-' }} m²
+                                </div>
+                            @endif
                         @else
                             <div class="text-[11px] text-zinc-500">
                                 Ra: {{ $d['ra'] ?? '-' }} m, Rb: {{ $d['rb'] ?? '-' }} m

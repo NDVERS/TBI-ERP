@@ -62,6 +62,53 @@ class QolAndDecimalNormalizationTest extends TestCase
         $this->assertEquals(150.5, $opname->dimensions_json['stock_bin']);
     }
 
+    public function test_stock_opname_form_supports_side_dimension_mode_and_normalizes_commas(): void
+    {
+        $surveyor = User::factory()->create([
+            'role' => 'surveyor_opname',
+            'is_active' => true,
+        ]);
+
+        $material = Material::create([
+            'code' => 'PASIR-PALU-02',
+            'name' => 'Pasir Palu Sisi Test',
+            'unit' => 'Kg',
+            'density_kg_m3' => 1400.00,
+            'initial_stock' => 100000.00,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($surveyor);
+
+        // Test with comma formatted side dimensions: pa = 10,5 ; la = 4,2 ; pb = 14,0 ; lb = 8,5
+        Livewire::test(StockOpnameForm::class)
+            ->set('opname_date', now()->format('Y-m-d'))
+            ->set('material_id', $material->id)
+            ->set('shape_type', 'limas_terpancung')
+            ->set('limas_input_mode', 'sisi')
+            ->set('tinggi', '3,5')
+            ->set('pa', '10,0')
+            ->set('la_side', '4,0')
+            ->set('pb', '14,0')
+            ->set('lb_side', '8,0')
+            ->assertSet('la', 40.0)
+            ->assertSet('lb', 112.0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $opname = StockOpname::where('material_id', $material->id)->first();
+        $this->assertNotNull($opname);
+        $this->assertEquals(3.5, $opname->dimensions_json['tinggi']);
+        $this->assertEquals(10.0, $opname->dimensions_json['pa']);
+        $this->assertEquals(4.0, $opname->dimensions_json['la_side']);
+        $this->assertEquals(14.0, $opname->dimensions_json['pb']);
+        $this->assertEquals(8.0, $opname->dimensions_json['lb_side']);
+        $this->assertEquals(40.0, $opname->dimensions_json['la']);
+        $this->assertEquals(112.0, $opname->dimensions_json['lb']);
+        $this->assertGreaterThan(0, $opname->calculated_volume_m3);
+        $this->assertGreaterThan(0, $opname->calculated_weight_kg);
+    }
+
     public function test_material_receive_form_normalizes_commas_to_dots(): void
     {
         $gudang = User::factory()->create([

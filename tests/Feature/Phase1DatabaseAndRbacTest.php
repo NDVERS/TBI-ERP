@@ -26,9 +26,9 @@ class Phase1DatabaseAndRbacTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'operator@tbi.com', 'role' => 'operator_produksi']);
         $this->assertDatabaseHas('users', ['email' => 'surveyor@tbi.com', 'role' => 'surveyor_opname']);
 
-        // Verify 9 Materials (Konsolidasi Pasir Palu Ex-Lariang & Tibo, Additive Kg & SBTJM2 Liter)
+        // Verify 9 Materials (Konsolidasi Pasir Palu Ex-Lariang & Tibo, Additive Kg & SBTJM2 Liter, Semen Ton)
         $this->assertDatabaseCount('materials', 9);
-        $this->assertDatabaseHas('materials', ['name' => 'Semen', 'unit' => 'Kg']);
+        $this->assertDatabaseHas('materials', ['name' => 'Semen', 'unit' => 'Ton']);
         $this->assertDatabaseHas('materials', ['name' => 'Pasir Palu', 'unit' => 'Kg']);
         $this->assertDatabaseHas('materials', ['name' => 'Batu Besar 2/3', 'unit' => 'Kg']);
         $this->assertDatabaseHas('materials', ['name' => 'Additive', 'unit' => 'Kg']);

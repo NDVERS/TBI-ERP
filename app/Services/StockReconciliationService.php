@@ -232,8 +232,12 @@ class StockReconciliationService
         $stokAwal = (float) $material->initial_stock_kg;
         $penerimaan = $this->getMonthlyReceiveTotal($material, $targetYear, $targetMonth);
         $pemakaian = $this->getMonthlyProductionUsage($material, $targetYear, $targetMonth);
-        // Safe addition and subtraction: (stokAwal + penerimaan - COALESCE(pemakaian, 0))
-        $stokTeoritis = round($stokAwal + $penerimaan - ($pemakaian ?: 0.0), 2);
+
+        $isAir = strcasecmp($material->name, 'Air') === 0;
+        // Air bersifat tak terbatas dan terisi kontinu di batching plant,
+        // sehingga stok akhir teoritis selalu tertahan di angka stok awal (5.000.000,00),
+        // sementara pemakaian aktual tetap tercatat dan ditampilkan secara akurat.
+        $stokTeoritis = $isAir ? $stokAwal : round($stokAwal + $penerimaan - ($pemakaian ?: 0.0), 2);
 
         $latestOpnameWeight = $this->getLatestOpnameStock($material, $targetYear, $targetMonth);
         $hasOpname = $latestOpnameWeight !== null;
@@ -258,7 +262,13 @@ class StockReconciliationService
             ];
         }
 
-        $result = $this->calculateReconciliation($stokAwal, $penerimaan, $pemakaian, $latestOpnameWeight);
+        $result = $isAir
+            ? array_merge($this->calculateReconciliation($stokAwal, 0, 0, $latestOpnameWeight), [
+                'stok_teoritis' => $stokAwal,
+                'penerimaan' => $penerimaan,
+                'pemakaian' => $pemakaian,
+            ])
+            : $this->calculateReconciliation($stokAwal, $penerimaan, $pemakaian, $latestOpnameWeight);
 
         return array_merge([
             'material_id' => $material->id,
