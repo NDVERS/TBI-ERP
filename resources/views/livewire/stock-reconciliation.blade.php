@@ -18,6 +18,24 @@
 
         {{-- Filter Periode & Action Buttons --}}
         <div class="flex flex-wrap items-center gap-2.5">
+            {{-- Quick Presets --}}
+            <div class="inline-flex rounded-md border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
+                <button
+                    type="button"
+                    wire:click="setThisMonth"
+                    class="px-2.5 py-1.5 rounded transition-all {{ $selectedMonth === now()->month && $selectedYear === now()->year ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                >
+                    Bulan Ini
+                </button>
+                <button
+                    type="button"
+                    wire:click="setLastMonth"
+                    class="px-2.5 py-1.5 rounded transition-all {{ $selectedMonth === now()->subMonth()->month && $selectedYear === now()->subMonth()->year ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                >
+                    Bulan Lalu
+                </button>
+            </div>
+
             {{-- Month Selector --}}
             <select
                 wire:model.live="selectedMonth"
@@ -150,13 +168,18 @@
         title="Tabel Rekapitulasi Stok Periode {{ $months[$selectedMonth] }} {{ $selectedYear }}"
         description="Hasil kalkulasi stok akhir teoritis dari pergerakan material dibandingkan stok fisik opname terkini."
     >
-        {{-- Search Input --}}
-        <div class="mb-4 max-w-sm">
-            <x-ui.input
-                wire:model.live.debounce.250ms="search"
-                placeholder="Cari nama material atau status..."
-                prefix="🔍"
-            />
+        {{-- Search Input & Density Toggle --}}
+        <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="w-full sm:max-w-sm">
+                <x-ui.input
+                    wire:model.live.debounce.250ms="search"
+                    placeholder="Cari nama material atau status..."
+                    prefix="🔍"
+                />
+            </div>
+            <div>
+                <x-ui.table-density-toggle />
+            </div>
         </div>
 
         @php

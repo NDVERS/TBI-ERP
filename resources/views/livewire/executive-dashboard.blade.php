@@ -18,6 +18,24 @@
 
         {{-- Periode Filter --}}
         <div class="flex items-center gap-2">
+            {{-- Quick Presets --}}
+            <div class="inline-flex rounded-md border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
+                <button
+                    type="button"
+                    wire:click="setThisMonth"
+                    class="px-2.5 py-1.5 rounded transition-all {{ $selectedMonth === now()->month && $selectedYear === now()->year ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                >
+                    Bulan Ini
+                </button>
+                <button
+                    type="button"
+                    wire:click="setLastMonth"
+                    class="px-2.5 py-1.5 rounded transition-all {{ $selectedMonth === now()->subMonth()->month && $selectedYear === now()->subMonth()->year ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                >
+                    Bulan Lalu
+                </button>
+            </div>
+
             <select
                 wire:model.live="selectedMonth"
                 class="h-10 px-3 text-xs md:text-sm font-medium rounded-md border border-zinc-300 bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
@@ -62,13 +80,20 @@
                     </div>
                 </div>
 
-                <a
-                    href="{{ route('material-receives.index') }}"
-                    class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-amber-900 text-white text-xs font-medium hover:bg-amber-950 transition-colors shrink-0 shadow-xs"
-                >
-                    <span>Input Penerimaan Truk</span>
-                    <span>&rarr;</span>
-                </a>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a
+                        href="{{ route('purchase-orders.index') }}"
+                        class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-amber-900 text-white text-xs font-semibold hover:bg-amber-950 transition-colors shadow-xs"
+                    >
+                        <span>+ Terbitkan PO</span>
+                    </a>
+                    <a
+                        href="{{ route('material-receives.index') }}"
+                        class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-900 text-xs font-semibold hover:bg-amber-100 transition-colors shadow-2xs"
+                    >
+                        <span>Input Penerimaan</span>
+                    </a>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">

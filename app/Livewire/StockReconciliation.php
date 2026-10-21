@@ -37,6 +37,19 @@ class StockReconciliation extends Component
         $this->selectedMonth = Carbon::now()->month;
     }
 
+    public function setThisMonth(): void
+    {
+        $this->selectedYear = Carbon::now()->year;
+        $this->selectedMonth = Carbon::now()->month;
+    }
+
+    public function setLastMonth(): void
+    {
+        $last = Carbon::now()->subMonth();
+        $this->selectedYear = $last->year;
+        $this->selectedMonth = $last->month;
+    }
+
     public function exportExcel(StockReconciliationService $service, ExcelReportService $excelService): StreamedResponse
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {

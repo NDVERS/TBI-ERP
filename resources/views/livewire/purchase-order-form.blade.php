@@ -108,9 +108,25 @@
                         mono
                         required
                     />
-                    <p class="mt-1 text-[11px] text-zinc-500 font-mono">
-                        Satuan otomatis: <strong>{{ $unit }}</strong> (mendukung koma/titik).
-                    </p>
+                    @php
+                        $numQty = (float) str_replace(',', '.', (string) $qty_ordered);
+                    @endphp
+                    @if ($numQty > 0)
+                        <div class="mt-1.5 p-2 rounded bg-zinc-100 border border-zinc-200 text-[11px] font-mono text-zinc-600 flex items-center justify-between">
+                            <span>Estimasi Muatan:</span>
+                            <span class="font-bold text-zinc-900">
+                                @if ($unit === 'Ton')
+                                    {{ number_format($numQty * 1000, 0, ',', '.') }} kg (~{{ number_format(($numQty * 1000) / 50, 0, ',', '.') }} zak)
+                                @else
+                                    {{ number_format($numQty, 2, ',', '.') }} m³ (~{{ number_format($numQty * 1.5, 1, ',', '.') }} Ton)
+                                @endif
+                            </span>
+                        </div>
+                    @else
+                        <p class="mt-1 text-[11px] text-zinc-500 font-mono">
+                            Satuan otomatis: <strong>{{ $unit }}</strong> (mendukung koma/titik).
+                        </p>
+                    @endif
                 </div>
             </div>
 
@@ -214,7 +230,10 @@
             </div>
 
             {{-- Form Submit Button --}}
-            <div class="flex items-center justify-end pt-3 border-t border-zinc-100">
+            <div class="flex items-center justify-between pt-3 border-t border-zinc-100">
+                <div>
+                    <x-ui.unsaved-changes-guard />
+                </div>
                 <x-ui.button
                     type="submit"
                     variant="primary"
@@ -240,18 +259,55 @@
         description="Daftar surat pesanan pembelian bahan baku material beserta status logistik pengapalan."
     >
         {{-- Search & Export Bar --}}
-        <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div class="w-full sm:max-w-sm">
-                <x-ui.input
-                    wire:model.live.debounce.250ms="search"
-                    placeholder="Cari No. PO, supplier, material, kapal, jetty..."
-                    prefix="🔍"
-                    :clearable="true"
-                    :has-value="!empty($search)"
-                    loading-target="search"
-                />
+        <div class="mb-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {{-- Quick Date Range Presets --}}
+                <div class="inline-flex rounded-md border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
+                    <button
+                        type="button"
+                        wire:click="setDateRange('all')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'all' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Semua
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('today')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'today' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Hari Ini
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('this_week')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'this_week' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Minggu Ini
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('this_month')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'this_month' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Bulan Ini
+                    </button>
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <x-ui.input
+                        wire:model.live.debounce.250ms="search"
+                        placeholder="Cari No. PO, supplier, material..."
+                        prefix="🔍"
+                        :clearable="true"
+                        :has-value="!empty($search)"
+                        loading-target="search"
+                    />
+                </div>
             </div>
+
             <div class="flex flex-wrap items-center gap-2">
+                <x-ui.table-density-toggle />
+
                 <a
                     href="{{ route('purchase-orders.report-excel', ['month' => now()->month, 'year' => now()->year]) }}"
                     class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
@@ -313,7 +369,10 @@
                 <tr class="hover:bg-zinc-50/80 transition-colors">
                     {{-- 1. NO. PO --}}
                     <td class="px-4 py-3 first:pl-5 font-mono font-semibold text-zinc-900 whitespace-nowrap">
-                        {{ $po->po_number }}
+                        <div class="inline-flex items-center gap-1.5">
+                            <span>{{ $po->po_number }}</span>
+                            <x-ui.copy-button :text="$po->po_number" title="Salin No. PO" />
+                        </div>
                     </td>
 
                     {{-- 2. TANGGAL PO --}}
@@ -413,7 +472,20 @@
 
                     {{-- 17. AKSI --}}
                     <td class="px-4 py-3 last:pr-5 whitespace-nowrap text-right">
+                        @php
+                            $poWaText = "*PURCHASE ORDER PT TB BETON INDONESIA*\n"
+                                . "No. PO: {$po->po_number}\n"
+                                . "Tanggal: " . ($po->po_date ? $po->po_date->format('d/m/Y') : '-') . "\n"
+                                . "Supplier: " . ($po->supplier->name ?? '-') . "\n"
+                                . "Material: " . ($po->material_type_input ?: ($po->material->name ?? '-')) . "\n"
+                                . "Jumlah: " . number_format((float) $po->qty_ordered, 2, ',', '.') . " {$po->unit}\n"
+                                . "Tongkang/Kapal: " . ($po->vessel_name ?: '-') . "\n"
+                                . "Rute: " . ($po->loading_jetty ?: '-') . " -> " . ($po->unloading_jetty ?: '-') . "\n"
+                                . "Status: {$po->status}\n\n"
+                                . "Tautan PDF:\n" . route('purchase-orders.pdf', $po->id);
+                        @endphp
                         <div class="inline-flex items-center gap-1.5 justify-end">
+                            <x-ui.whatsapp-button :message="$poWaText" label="WA" />
                             <a
                                 href="{{ route('purchase-orders.pdf', $po->id) }}"
                                 target="_blank"
@@ -425,6 +497,7 @@
                                 </svg>
                                 <span>PDF</span>
                             </a>
+                            <x-ui.copy-button :text="route('purchase-orders.pdf', $po->id)" label="Tautan" title="Salin Tautan PDF PO" />
                             <button
                                 type="button"
                                 wire:click="openEditModal({{ $po->id }})"
@@ -608,6 +681,33 @@
                             />
                         @endif
                     </div>
+
+                    @php
+                        $depDate = $isInTransitOrBeyond ? $editing_actual_departure_date : $editing_est_departure_date;
+                        $arrDate = $isArrivedOrBeyond ? $editing_actual_arrival_date : $editing_est_arrival_date;
+                        $sailDays = null;
+                        if (!empty($depDate) && !empty($arrDate)) {
+                            try {
+                                $d1 = \Carbon\Carbon::parse($depDate);
+                                $d2 = \Carbon\Carbon::parse($arrDate);
+                                $sailDays = (int) $d1->diffInDays($d2, false);
+                            } catch (\Exception $e) {
+                                $sailDays = null;
+                            }
+                        }
+                    @endphp
+                    @if ($sailDays !== null)
+                        <div class="p-2.5 rounded-md bg-zinc-100 text-xs font-mono flex items-center justify-between text-zinc-700">
+                            <span>Estimasi Waktu Tempuh Pelayaran:</span>
+                            <span class="font-bold {{ $sailDays >= 0 ? 'text-zinc-900' : 'text-rose-600' }}">
+                                @if ($sailDays >= 0)
+                                    {{ $sailDays }} Hari Pelayaran
+                                @else
+                                    ⚠️ Tanggal Tiba mendahului Berangkat
+                                @endif
+                            </span>
+                        </div>
+                    @endif
 
                     {{-- Action Buttons --}}
                     <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100">

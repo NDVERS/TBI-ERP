@@ -62,6 +62,12 @@ class PurchaseOrderForm extends Component
 
     public string $search = '';
 
+    public string $filterDateRange = 'all';
+
+    public ?string $filterStartDate = null;
+
+    public ?string $filterEndDate = null;
+
     // Quick Edit Status & Logistics Modal Properties
     public bool $show_edit_modal = false;
 
@@ -151,6 +157,32 @@ class PurchaseOrderForm extends Component
         $this->resetPage();
     }
 
+    public function setDateRange(string $range): void
+    {
+        $this->filterDateRange = $range;
+        $this->resetPage();
+
+        $today = Carbon::today();
+        match ($range) {
+            'today' => [
+                $this->filterStartDate = $today->toDateString(),
+                $this->filterEndDate = $today->toDateString(),
+            ],
+            'this_week' => [
+                $this->filterStartDate = $today->copy()->startOfWeek()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfWeek()->toDateString(),
+            ],
+            'this_month' => [
+                $this->filterStartDate = $today->copy()->startOfMonth()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfMonth()->toDateString(),
+            ],
+            default => [
+                $this->filterStartDate = null,
+                $this->filterEndDate = null,
+            ],
+        };
+    }
+
     /**
      * Map operational PO material type into consolidated master material account.
      */
@@ -232,6 +264,7 @@ class PurchaseOrderForm extends Component
         $this->po_number = $docService->generatePoNumber($this->po_date);
 
         session()->flash('success', "Purchase Order ({$savedNumber}) berhasil disimpan.");
+        $this->dispatch('form-saved');
     }
 
     public function openEditModal(int $poId): void
@@ -433,6 +466,8 @@ class PurchaseOrderForm extends Component
                         });
                 });
             })
+            ->when($this->filterStartDate, fn ($q) => $q->whereDate('po_date', '>=', $this->filterStartDate))
+            ->when($this->filterEndDate, fn ($q) => $q->whereDate('po_date', '<=', $this->filterEndDate))
             ->latest('po_date')
             ->latest('id')
             ->paginate(10);

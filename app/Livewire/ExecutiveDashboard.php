@@ -37,6 +37,19 @@ class ExecutiveDashboard extends Component
         $this->selectedMonth = Carbon::now()->month;
     }
 
+    public function setThisMonth(): void
+    {
+        $this->selectedYear = Carbon::now()->year;
+        $this->selectedMonth = Carbon::now()->month;
+    }
+
+    public function setLastMonth(): void
+    {
+        $last = Carbon::now()->subMonth();
+        $this->selectedYear = $last->year;
+        $this->selectedMonth = $last->month;
+    }
+
     public function render(StockReconciliationService $reconciliationService): View
     {
         $year = $this->selectedYear;

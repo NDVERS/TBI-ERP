@@ -3,7 +3,18 @@
     'stickyHeader' => false,
 ])
 
-<div class="w-full overflow-hidden border border-zinc-200 rounded-lg bg-white shadow-xs">
+<div
+    x-data="{
+        compact: localStorage.getItem('tbi_table_compact') === 'true',
+        init() {
+            window.addEventListener('tbi-density-toggle', (e) => {
+                this.compact = e.detail;
+            });
+        }
+    }"
+    :class="compact ? 'table-compact-mode' : ''"
+    class="w-full overflow-hidden border border-zinc-200 rounded-lg bg-white shadow-xs transition-all"
+>
     <div class="overflow-x-auto">
         <table {{ $attributes->merge(['class' => 'w-full text-left border-collapse text-sm text-zinc-800']) }}>
             @if (isset($head))

@@ -73,6 +73,42 @@ class ExcelReportService
     }
 
     /**
+     * Export Material Receive Monthly Report to a styled Excel spreadsheet.
+     *
+     * @param  Collection<int, mixed>  $receives
+     */
+    public function exportMaterialReceiveReport(
+        Collection $receives,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        if (class_exists(Spreadsheet::class)) {
+            return $this->exportMaterialReceiveReportXlsx($receives, $year, $month, $printedBy);
+        }
+
+        return $this->exportMaterialReceiveReportFallback($receives, $year, $month, $printedBy);
+    }
+
+    /**
+     * Export Production Docket Monthly Summary Report to a styled Excel spreadsheet.
+     *
+     * @param  Collection<int, mixed>  $dockets
+     */
+    public function exportProductionDocketReport(
+        Collection $dockets,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        if (class_exists(Spreadsheet::class)) {
+            return $this->exportProductionDocketReportXlsx($dockets, $year, $month, $printedBy);
+        }
+
+        return $this->exportProductionDocketReportFallback($dockets, $year, $month, $printedBy);
+    }
+
+    /**
      * Full Binary XLSX Export using PhpSpreadsheet for Stock Reconciliation.
      *
      * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
@@ -695,6 +731,602 @@ class ExcelReportService
     }
 
     /**
+     * Binary XLSX Export using PhpSpreadsheet for Material Receive Report.
+     *
+     * @param  Collection<int, mixed>  $receives
+     */
+    protected function exportMaterialReceiveReportXlsx(
+        Collection $receives,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Penerimaan Material');
+        $sheet->setShowGridLines(true);
+
+        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+
+        $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
+        $user = $printedBy ?: 'Petugas Gudang';
+        $totalCount = $receives->count();
+
+        // 1. Table Headers
+        $headers = [
+            'No',
+            'Tanggal Terima',
+            'No. RI',
+            'Ref. No. PO',
+            'No. Polisi',
+            'Supplier / Vendor',
+            'Jenis Material',
+            'Volume (m³)',
+            'Density (kg/m³)',
+            'Total Berat (kg)',
+            'Tonase (Ton)',
+        ];
+
+        $lastColLetter = Coordinate::stringFromColumnIndex(count($headers) + 1); // Column L
+
+        // 2. Draw Company Header & Logo
+        $this->drawReportHeader(
+            sheet: $sheet,
+            reportTitle: 'LAPORAN REKAPITULASI PENERIMAAN MATERIAL TRUK',
+            metaText: "Periode: {$monthName}   |   Total Data: {$totalCount} Penerimaan   |   Dicetak Oleh: {$user}   |   Waktu: {$printedAt}",
+            lastColLetter: $lastColLetter
+        );
+
+        $startRow = 6;
+        $sheet->getRowDimension($startRow)->setRowHeight(28);
+
+        foreach ($headers as $index => $header) {
+            $colLetter = Coordinate::stringFromColumnIndex($index + 2); // Start at Column B
+            $sheet->setCellValue("{$colLetter}{$startRow}", $header);
+        }
+
+        $headerRange = "B{$startRow}:{$lastColLetter}{$startRow}";
+
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 9.5,
+                'color' => ['argb' => 'FFFFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['argb' => self::COLOR_DARK_ZINC],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => self::COLOR_BORDER_HEADER],
+                ],
+            ],
+        ]);
+
+        // 3. Populate Rows
+        $currentRow = $startRow + 1;
+        $rowIdx = 0;
+
+        foreach ($receives as $rec) {
+            $rowIdx++;
+            $sheet->getRowDimension($currentRow)->setRowHeight(22);
+            $bgFill = ($rowIdx % 2 === 1) ? 'FFFFFFFF' : self::COLOR_ZEBRA_ROW;
+
+            $sheet->setCellValue("B{$currentRow}", $rowIdx);
+            $sheet->setCellValue("C{$currentRow}", $rec->receive_date ? $rec->receive_date->format('d/m/Y') : '-');
+            $sheet->setCellValue("D{$currentRow}", $rec->ri_no);
+            $sheet->setCellValue("E{$currentRow}", $rec->purchaseOrder?->po_number ?? '-');
+            $sheet->setCellValue("F{$currentRow}", $rec->vehicle_no);
+            $sheet->setCellValue("G{$currentRow}", $rec->supplier?->name ?? 'Supplier Umum');
+            $sheet->setCellValue("H{$currentRow}", $rec->material?->name ?? '-');
+
+            $sheet->setCellValue("I{$currentRow}", (float) $rec->volume_m3);
+            $sheet->setCellValue("J{$currentRow}", (float) $rec->density_used);
+            $sheet->setCellValue("K{$currentRow}", (float) $rec->total_weight_kg);
+            $sheet->setCellValue("L{$currentRow}", (float) $rec->total_weight_kg / 1000);
+
+            // Cell styling
+            $sheet->getStyle("B{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['argb' => $bgFill],
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['argb' => self::COLOR_BORDER_ROW],
+                    ],
+                ],
+                'alignment' => [
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ]);
+
+            $sheet->getStyle("B{$currentRow}:F{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("D{$currentRow}")->getFont()->setBold(true);
+            $sheet->getStyle("G{$currentRow}:H{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
+            $sheet->getStyle("I{$currentRow}:L{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("I{$currentRow}:L{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->getStyle("K{$currentRow}")->getFont()->setBold(true);
+
+            $currentRow++;
+        }
+
+        // 4. Summary Row
+        $endDataRow = max($startRow + 1, $currentRow - 1);
+        $sheet->getRowDimension($currentRow)->setRowHeight(24);
+        $sheet->mergeCells("B{$currentRow}:H{$currentRow}");
+        $sheet->setCellValue("B{$currentRow}", 'TOTAL REKAPITULASI');
+
+        if ($rowIdx > 0) {
+            $sheet->setCellValue("I{$currentRow}", "=SUM(I7:I{$endDataRow})");
+            $sheet->setCellValue("J{$currentRow}", "=AVERAGE(J7:J{$endDataRow})");
+            $sheet->setCellValue("K{$currentRow}", "=SUM(K7:K{$endDataRow})");
+            $sheet->setCellValue("L{$currentRow}", "=SUM(L7:L{$endDataRow})");
+        } else {
+            $sheet->setCellValue("I{$currentRow}", 0);
+            $sheet->setCellValue("J{$currentRow}", 0);
+            $sheet->setCellValue("K{$currentRow}", 0);
+            $sheet->setCellValue("L{$currentRow}", 0);
+        }
+
+        $sheet->getStyle("B{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 10,
+                'color' => ['argb' => 'FF0F172A'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['argb' => self::COLOR_SUMMARY_BG],
+            ],
+            'borders' => [
+                'top' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF94A3B8'],
+                ],
+                'bottom' => [
+                    'borderStyle' => Border::BORDER_DOUBLE,
+                    'color' => ['argb' => 'FF0F172A'],
+                ],
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => self::COLOR_BORDER_ROW],
+                ],
+            ],
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+        $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setIndent(1);
+
+        $sheet->getStyle("I{$currentRow}:L{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("I{$currentRow}:L{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // 5. Ergonomics
+        $sheet->getColumnDimension('A')->setWidth(3);
+        $sheet->getColumnDimension('B')->setWidth(6);
+        foreach (range(3, count($headers) + 1) as $colIdx) {
+            $colLetter = Coordinate::stringFromColumnIndex($colIdx);
+            $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+        }
+
+        $sheet->freezePane('B7');
+        $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
+
+        $fileName = "Rekap_Penerimaan_Material_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Fallback Excel (.xls) HTML format for Material Receive Report.
+     *
+     * @param  Collection<int, mixed>  $receives
+     */
+    protected function exportMaterialReceiveReportFallback(
+        Collection $receives,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
+        $user = $printedBy ?: 'Petugas Gudang';
+        $totalCount = $receives->count();
+        $fileName = "Rekap_Penerimaan_Material_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xls';
+
+        $logoBase64 = $this->getLogoBase64();
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Cache-Control' => 'max-age=0, no-cache, no-store, must-revalidate',
+            'Pragma' => 'public',
+        ];
+
+        return response()->streamDownload(function () use ($receives, $monthName, $printedAt, $user, $totalCount) {
+            echo "\xEF\xBB\xBF";
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Penerimaan Material</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>
+                body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10pt; }
+                .title { font-size: 13pt; font-weight: bold; color: #18181B; }
+                .subtitle { font-size: 10pt; font-weight: bold; color: #334155; }
+                .meta { font-size: 9pt; color: #64748B; }
+                th { background-color: #18181B; color: #FFFFFF; font-weight: bold; text-align: center; border: 1px solid #334155; padding: 6px 10px; }
+                td { border: 1px solid #E2E8F0; padding: 5px 8px; vertical-align: middle; }
+                .tc { text-align: center; }
+                .tr { text-align: right; }
+                .tl { text-align: left; }
+                .bold { font-weight: bold; }
+                .bg-zebra { background-color: #F8FAFC; }
+                .bg-total { background-color: #F1F5F9; font-weight: bold; border-top: 1px solid #94A3B8; border-bottom: 3px double #0F172A; }
+            </style></head><body>';
+
+            echo '<table>';
+            echo '<tr><td colspan="11" class="title">PT TB BETON INDONESIA</td></tr>';
+            echo '<tr><td colspan="11" class="subtitle">LAPORAN REKAPITULASI PENERIMAAN MATERIAL TRUK</td></tr>';
+            echo "<tr><td colspan=\"11\" class=\"meta\">Periode: {$monthName} | Total: {$totalCount} Penerimaan | Dicetak Oleh: {$user} | Waktu: {$printedAt}</td></tr>";
+            echo '<tr><td colspan="11"></td></tr>';
+
+            echo '<tr>
+                <th>No</th>
+                <th>Tanggal Terima</th>
+                <th>No. RI</th>
+                <th>Ref. No. PO</th>
+                <th>No. Polisi</th>
+                <th>Supplier / Vendor</th>
+                <th>Jenis Material</th>
+                <th>Volume (m³)</th>
+                <th>Density (kg/m³)</th>
+                <th>Total Berat (kg)</th>
+                <th>Tonase (Ton)</th>
+            </tr>';
+
+            $totalVol = 0;
+            $totalKg = 0;
+
+            foreach ($receives as $idx => $rec) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $v = (float) $rec->volume_m3;
+                $kg = (float) $rec->total_weight_kg;
+                $totalVol += $v;
+                $totalKg += $kg;
+
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc">'.($rec->receive_date ? $rec->receive_date->format('d/m/Y') : '-').'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $rec->ri_no).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($rec->purchaseOrder?->po_number ?? '-')).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $rec->vehicle_no).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($rec->supplier?->name ?? 'Supplier Umum')).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($rec->material?->name ?? '-')).'</td>';
+                echo '<td class="tr">'.number_format($v, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $rec->density_used, 2, '.', ',').'</td>';
+                echo '<td class="tr bold">'.number_format($kg, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format($kg / 1000, 2, '.', ',').'</td>';
+                echo '</tr>';
+            }
+
+            echo '<tr class="bg-total">';
+            echo '<td colspan="7" class="tr bold">TOTAL REKAPITULASI</td>';
+            echo '<td class="tr bold">'.number_format($totalVol, 2, '.', ',').'</td>';
+            echo '<td></td>';
+            echo '<td class="tr bold">'.number_format($totalKg, 2, '.', ',').'</td>';
+            echo '<td class="tr bold">'.number_format($totalKg / 1000, 2, '.', ',').'</td>';
+            echo '</tr>';
+
+            echo '</table></body></html>';
+        }, $fileName, $headers);
+    }
+
+    /**
+     * Binary XLSX Export using PhpSpreadsheet for Production Docket Report.
+     *
+     * @param  Collection<int, mixed>  $dockets
+     */
+    protected function exportProductionDocketReportXlsx(
+        Collection $dockets,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekapitulasi Produksi');
+        $sheet->setShowGridLines(true);
+
+        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+
+        $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
+        $user = $printedBy ?: 'Operator Batching';
+        $totalCount = $dockets->count();
+
+        // 1. Table Headers
+        $headers = [
+            'No',
+            'No. Docket',
+            'Tanggal',
+            'Jam Muat',
+            'Ref. No. SO',
+            'Customer',
+            'Proyek / Alamat',
+            'Mutu Beton',
+            'No. Truk Mixer',
+            'Volume (m³)',
+            'Kumulatif Harian (m³)',
+            'Operator Produksi',
+        ];
+
+        $lastColLetter = Coordinate::stringFromColumnIndex(count($headers) + 1); // Column M
+
+        // 2. Draw Company Header & Logo
+        $this->drawReportHeader(
+            sheet: $sheet,
+            reportTitle: 'LAPORAN REKAPITULASI PRODUKSI HARIAN & DISPATCH READY MIX',
+            metaText: "Periode: {$monthName}   |   Total Data: {$totalCount} Tiket Docket   |   Dicetak Oleh: {$user}   |   Waktu: {$printedAt}",
+            lastColLetter: $lastColLetter
+        );
+
+        $startRow = 6;
+        $sheet->getRowDimension($startRow)->setRowHeight(28);
+
+        foreach ($headers as $index => $header) {
+            $colLetter = Coordinate::stringFromColumnIndex($index + 2); // Start at Column B
+            $sheet->setCellValue("{$colLetter}{$startRow}", $header);
+        }
+
+        $headerRange = "B{$startRow}:{$lastColLetter}{$startRow}";
+
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 9.5,
+                'color' => ['argb' => 'FFFFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['argb' => self::COLOR_DARK_ZINC],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => self::COLOR_BORDER_HEADER],
+                ],
+            ],
+        ]);
+
+        // 3. Populate Rows
+        $currentRow = $startRow + 1;
+        $rowIdx = 0;
+
+        foreach ($dockets as $d) {
+            $rowIdx++;
+            $sheet->getRowDimension($currentRow)->setRowHeight(22);
+            $bgFill = ($rowIdx % 2 === 1) ? 'FFFFFFFF' : self::COLOR_ZEBRA_ROW;
+
+            $sheet->setCellValue("B{$currentRow}", $rowIdx);
+            $sheet->setCellValue("C{$currentRow}", $d->docket_no);
+            $sheet->setCellValue("D{$currentRow}", $d->production_date ? Carbon::parse($d->production_date)->format('d/m/Y') : '-');
+            $sheet->setCellValue("E{$currentRow}", substr((string) $d->time_load, 0, 5));
+            $sheet->setCellValue("F{$currentRow}", $d->salesOrder?->so_number ?? '-');
+            $sheet->setCellValue("G{$currentRow}", $d->customer_name);
+            $sheet->setCellValue("H{$currentRow}", $d->address ?: '-');
+            $sheet->setCellValue("I{$currentRow}", $d->mutu_code);
+            $sheet->setCellValue("J{$currentRow}", $d->truck_no);
+            $sheet->setCellValue("K{$currentRow}", (float) $d->volume_m3);
+            $sheet->setCellValue("L{$currentRow}", (float) $d->daily_cumulative_m3);
+            $sheet->setCellValue("M{$currentRow}", $d->creator?->name ?? 'Operator');
+
+            // Cell styling
+            $sheet->getStyle("B{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['argb' => $bgFill],
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['argb' => self::COLOR_BORDER_ROW],
+                    ],
+                ],
+                'alignment' => [
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ]);
+
+            $sheet->getStyle("B{$currentRow}:E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("C{$currentRow}")->getFont()->setBold(true);
+            $sheet->getStyle("F{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("G{$currentRow}:H{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            $sheet->getStyle("I{$currentRow}:J{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("I{$currentRow}")->getFont()->setBold(true);
+
+            $sheet->getStyle("K{$currentRow}:L{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("K{$currentRow}:L{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->getStyle("K{$currentRow}")->getFont()->setBold(true);
+            $sheet->getStyle("M{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $currentRow++;
+        }
+
+        // 4. Summary Row
+        $endDataRow = max($startRow + 1, $currentRow - 1);
+        $sheet->getRowDimension($currentRow)->setRowHeight(24);
+        $sheet->mergeCells("B{$currentRow}:J{$currentRow}");
+        $sheet->setCellValue("B{$currentRow}", 'TOTAL REKAPITULASI');
+
+        if ($rowIdx > 0) {
+            $sheet->setCellValue("K{$currentRow}", "=SUM(K7:K{$endDataRow})");
+        } else {
+            $sheet->setCellValue("K{$currentRow}", 0);
+        }
+
+        $sheet->getStyle("B{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 10,
+                'color' => ['argb' => 'FF0F172A'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['argb' => self::COLOR_SUMMARY_BG],
+            ],
+            'borders' => [
+                'top' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF94A3B8'],
+                ],
+                'bottom' => [
+                    'borderStyle' => Border::BORDER_DOUBLE,
+                    'color' => ['argb' => 'FF0F172A'],
+                ],
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => self::COLOR_BORDER_ROW],
+                ],
+            ],
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+        $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setIndent(1);
+
+        $sheet->getStyle("K{$currentRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("K{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+        // 5. Ergonomics
+        $sheet->getColumnDimension('A')->setWidth(3);
+        $sheet->getColumnDimension('B')->setWidth(6);
+        foreach (range(3, count($headers) + 1) as $colIdx) {
+            $colLetter = Coordinate::stringFromColumnIndex($colIdx);
+            $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+        }
+
+        $sheet->freezePane('B7');
+        $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
+
+        $fileName = "Rekap_Produksi_Docket_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Fallback Excel (.xls) HTML format for Production Docket Report.
+     *
+     * @param  Collection<int, mixed>  $dockets
+     */
+    protected function exportProductionDocketReportFallback(
+        Collection $dockets,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
+        $user = $printedBy ?: 'Operator Batching';
+        $totalCount = $dockets->count();
+        $fileName = "Rekap_Produksi_Docket_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xls';
+
+        $logoBase64 = $this->getLogoBase64();
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Cache-Control' => 'max-age=0, no-cache, no-store, must-revalidate',
+            'Pragma' => 'public',
+        ];
+
+        return response()->streamDownload(function () use ($dockets, $monthName, $printedAt, $user, $totalCount) {
+            echo "\xEF\xBB\xBF";
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
+            echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Rekapitulasi Produksi</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+            echo '<style>
+                body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10pt; }
+                .title { font-size: 13pt; font-weight: bold; color: #18181B; }
+                .subtitle { font-size: 10pt; font-weight: bold; color: #334155; }
+                .meta { font-size: 9pt; color: #64748B; }
+                th { background-color: #18181B; color: #FFFFFF; font-weight: bold; text-align: center; border: 1px solid #334155; padding: 6px 10px; }
+                td { border: 1px solid #E2E8F0; padding: 5px 8px; vertical-align: middle; }
+                .tc { text-align: center; }
+                .tr { text-align: right; }
+                .tl { text-align: left; }
+                .bold { font-weight: bold; }
+                .bg-zebra { background-color: #F8FAFC; }
+                .bg-total { background-color: #F1F5F9; font-weight: bold; border-top: 1px solid #94A3B8; border-bottom: 3px double #0F172A; }
+            </style></head><body>';
+
+            echo '<table>';
+            echo '<tr><td colspan="12" class="title">PT TB BETON INDONESIA</td></tr>';
+            echo '<tr><td colspan="12" class="subtitle">LAPORAN REKAPITULASI PRODUKSI HARIAN & DISPATCH READY MIX</td></tr>';
+            echo "<tr><td colspan=\"12\" class=\"meta\">Periode: {$monthName} | Total: {$totalCount} Tiket Docket | Dicetak Oleh: {$user} | Waktu: {$printedAt}</td></tr>";
+            echo '<tr><td colspan="12"></td></tr>';
+
+            echo '<tr>
+                <th>No</th>
+                <th>No. Docket</th>
+                <th>Tanggal</th>
+                <th>Jam Muat</th>
+                <th>Ref. No. SO</th>
+                <th>Customer</th>
+                <th>Proyek / Alamat</th>
+                <th>Mutu Beton</th>
+                <th>No. Truk Mixer</th>
+                <th>Volume (m³)</th>
+                <th>Kumulatif Harian (m³)</th>
+                <th>Operator Produksi</th>
+            </tr>';
+
+            $totalVol = 0;
+
+            foreach ($dockets as $idx => $d) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $v = (float) $d->volume_m3;
+                $totalVol += $v;
+
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $d->docket_no).'</td>';
+                echo '<td class="tc">'.($d->production_date ? Carbon::parse($d->production_date)->format('d/m/Y') : '-').'</td>';
+                echo '<td class="tc">'.htmlspecialchars(substr((string) $d->time_load, 0, 5)).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($d->salesOrder?->so_number ?? '-')).'</td>';
+                echo '<td class="tl bold">'.htmlspecialchars((string) $d->customer_name).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($d->address ?: '-')).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $d->mutu_code).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) $d->truck_no).'</td>';
+                echo '<td class="tr bold">'.number_format($v, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $d->daily_cumulative_m3, 2, '.', ',').'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($d->creator?->name ?? 'Operator')).'</td>';
+                echo '</tr>';
+            }
+
+            echo '<tr class="bg-total">';
+            echo '<td colspan="9" class="tr bold">TOTAL REKAPITULASI</td>';
+            echo '<td class="tr bold">'.number_format($totalVol, 2, '.', ',').'</td>';
+            echo '<td colspan="2"></td>';
+            echo '</tr>';
+
+            echo '</table></body></html>';
+        }, $fileName, $headers);
+    }
+
+    /**
      * Fallback Excel (.xls) HTML format for Stock Reconciliation.
      *
      * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
@@ -821,7 +1453,7 @@ class ExcelReportService
     /**
      * Get Base64 encoded string of TBI logo for inline embedding.
      */
-    protected function getLogoBase64(): ?string
+    public function getLogoBase64(): ?string
     {
         return $this->resolveLogoBase64();
     }

@@ -54,6 +54,12 @@ class MaterialReceiveForm extends Component
 
     public string $search = '';
 
+    public string $filterDateRange = 'all';
+
+    public ?string $filterStartDate = null;
+
+    public ?string $filterEndDate = null;
+
     // State untuk Modal Konversi Lab: Additive (Kg) -> SBTJM2 (Liter)
     public bool $showConversionModal = false;
 
@@ -83,6 +89,36 @@ class MaterialReceiveForm extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function setDateRange(string $range): void
+    {
+        $this->filterDateRange = $range;
+        $this->resetPage();
+
+        $today = Carbon::today();
+        match ($range) {
+            'today' => [
+                $this->filterStartDate = $today->toDateString(),
+                $this->filterEndDate = $today->toDateString(),
+            ],
+            'yesterday' => [
+                $this->filterStartDate = $today->copy()->subDay()->toDateString(),
+                $this->filterEndDate = $today->copy()->subDay()->toDateString(),
+            ],
+            'this_week' => [
+                $this->filterStartDate = $today->copy()->startOfWeek()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfWeek()->toDateString(),
+            ],
+            'this_month' => [
+                $this->filterStartDate = $today->copy()->startOfMonth()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfMonth()->toDateString(),
+            ],
+            default => [
+                $this->filterStartDate = null,
+                $this->filterEndDate = null,
+            ],
+        };
     }
 
     public function updatedPurchaseOrderId(mixed $value): void
@@ -250,6 +286,7 @@ class MaterialReceiveForm extends Component
 
         $formattedKg = number_format($totalWeight, 2, ',', '.');
         session()->flash('success', "Penerimaan material (RI: {$riNumber}) berhasil dicatat ({$formattedKg} Kg){$poNotice}");
+        $this->dispatch('form-saved');
     }
 
     public function openConversionModal(): void
@@ -384,6 +421,8 @@ class MaterialReceiveForm extends Component
                         });
                 });
             })
+            ->when($this->filterStartDate, fn ($q) => $q->whereDate('receive_date', '>=', $this->filterStartDate))
+            ->when($this->filterEndDate, fn ($q) => $q->whereDate('receive_date', '<=', $this->filterEndDate))
             ->latest('receive_date')
             ->latest('id')
             ->paginate(10);

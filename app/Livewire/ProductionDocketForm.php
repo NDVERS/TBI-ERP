@@ -75,6 +75,12 @@ class ProductionDocketForm extends Component
 
     public string $search = '';
 
+    public string $filterDateRange = 'all';
+
+    public ?string $filterStartDate = null;
+
+    public ?string $filterEndDate = null;
+
     public const ALLOWED_MUTU_CODES = [
         // Seri K (K-Series)
         'K100 / C', 'K100 / R',
@@ -210,6 +216,29 @@ class ProductionDocketForm extends Component
         return 'TM-'.strtoupper($num);
     }
 
+    public function getTotalBatchWeightProperty(): float
+    {
+        $silo1 = (float) str_replace(',', '.', (string) $this->silo1_act);
+        $pasirPalu = (float) str_replace(',', '.', (string) $this->pasir_palu_act);
+        $pasirLokal = (float) str_replace(',', '.', (string) $this->pasir_lokal_act);
+        $split12 = (float) str_replace(',', '.', (string) $this->split_1_2_act);
+        $split23 = (float) str_replace(',', '.', (string) $this->split_2_3_act);
+        $water = (float) str_replace(',', '.', (string) $this->water_act);
+        $admixture = (float) str_replace(',', '.', (string) $this->admixture_act);
+
+        return $silo1 + $pasirPalu + $pasirLokal + $split12 + $split23 + $water + $admixture;
+    }
+
+    public function getBatchDensityProperty(): float
+    {
+        $vol = (float) str_replace(',', '.', (string) $this->volume_m3);
+        if ($vol <= 0) {
+            return 0;
+        }
+
+        return $this->totalBatchWeight / $vol;
+    }
+
     public function updated(string $propertyName): void
     {
         $numericFields = [
@@ -235,6 +264,36 @@ class ProductionDocketForm extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function setDateRange(string $range): void
+    {
+        $this->filterDateRange = $range;
+        $this->resetPage();
+
+        $today = Carbon::today('Asia/Makassar');
+        match ($range) {
+            'today' => [
+                $this->filterStartDate = $today->toDateString(),
+                $this->filterEndDate = $today->toDateString(),
+            ],
+            'yesterday' => [
+                $this->filterStartDate = $today->copy()->subDay()->toDateString(),
+                $this->filterEndDate = $today->copy()->subDay()->toDateString(),
+            ],
+            'this_week' => [
+                $this->filterStartDate = $today->copy()->startOfWeek()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfWeek()->toDateString(),
+            ],
+            'this_month' => [
+                $this->filterStartDate = $today->copy()->startOfMonth()->toDateString(),
+                $this->filterEndDate = $today->copy()->endOfMonth()->toDateString(),
+            ],
+            default => [
+                $this->filterStartDate = null,
+                $this->filterEndDate = null,
+            ],
+        };
     }
 
     private function normalizeNumericInputs(): void
@@ -401,6 +460,7 @@ class ProductionDocketForm extends Component
 
         // Update jam ke waktu terkini
         $this->time_load = Carbon::now('Asia/Makassar')->format('H:i');
+        $this->dispatch('form-saved');
     }
 
     public function render(StockReconciliationService $reconService): View
@@ -426,6 +486,8 @@ class ProductionDocketForm extends Component
                         });
                 });
             })
+            ->when($this->filterStartDate, fn ($q) => $q->whereDate('production_date', '>=', $this->filterStartDate))
+            ->when($this->filterEndDate, fn ($q) => $q->whereDate('production_date', '<=', $this->filterEndDate))
             ->latest('id')
             ->paginate(10);
 

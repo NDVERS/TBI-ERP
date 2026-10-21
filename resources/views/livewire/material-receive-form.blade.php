@@ -233,7 +233,10 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-end pt-3 border-t border-zinc-100">
+            <div class="flex items-center justify-between pt-3 border-t border-zinc-100">
+                <div>
+                    <x-ui.unsaved-changes-guard />
+                </div>
                 <x-ui.button
                     type="submit"
                     variant="primary"
@@ -258,20 +261,90 @@
         title="Riwayat Penerimaan Material Truk"
         description="Data logistik material masuk yang telah terekam dan terkonversi ke berat kilogram."
     >
-        {{-- Search Bar --}}
-        <div class="mb-4 max-w-sm">
-            <x-ui.input
-                wire:model.live.debounce.250ms="search"
-                placeholder="Cari No. RI, No. Truk, supplier, material..."
-                prefix="🔍"
-                :clearable="true"
-                :has-value="!empty($search)"
-                loading-target="search"
-            />
+        {{-- Search Bar & Filter Presets --}}
+        <div class="mb-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {{-- Quick Date Range Presets --}}
+                <div class="inline-flex rounded-md border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
+                    <button
+                        type="button"
+                        wire:click="setDateRange('all')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'all' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Semua
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('today')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'today' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Hari Ini
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('yesterday')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'yesterday' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Kemarin
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('this_week')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'this_week' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Minggu Ini
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="setDateRange('this_month')"
+                        class="px-2.5 py-1.5 rounded transition-all {{ $filterDateRange === 'this_month' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                    >
+                        Bulan Ini
+                    </button>
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <x-ui.input
+                        wire:model.live.debounce.250ms="search"
+                        placeholder="Cari No. RI, No. Truk, supplier..."
+                        prefix="🔍"
+                        :clearable="true"
+                        :has-value="!empty($search)"
+                        loading-target="search"
+                    />
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <x-ui.table-density-toggle />
+
+                <a
+                    href="{{ route('material-receives.report-excel', ['month' => now()->month, 'year' => now()->year]) }}"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    title="Export Laporan Rekapitulasi Bulan Berjalan ke Excel (.xlsx / .xls)"
+                >
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Export Excel</span>
+                </a>
+
+                <a
+                    href="{{ route('material-receives.report-pdf', ['month' => now()->month, 'year' => now()->year]) }}"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    title="Cetak Laporan Rekapitulasi Bulan Berjalan (PDF)"
+                >
+                    <svg class="w-4 h-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>Cetak Rekap (PDF)</span>
+                </a>
+            </div>
         </div>
 
         @php
-            $headers = ['Tanggal', 'No. RI', 'Ref. PO', 'No. Polisi', 'Supplier', 'Material', 'Volume (m³)', 'Density (kg/m³)', 'Total Berat (Kg)'];
+            $headers = ['Tanggal', 'No. RI', 'Ref. PO', 'No. Polisi', 'Supplier', 'Material', 'Volume (m³)', 'Density (kg/m³)', 'Total Berat (Kg)', 'Aksi'];
         @endphp
 
         <x-ui.table :headers="$headers">
@@ -327,8 +400,27 @@
                     </td>
 
                     {{-- Total Berat Kg --}}
-                    <td class="px-4 py-3 last:pr-5 font-mono tabular-nums font-bold text-zinc-900 whitespace-nowrap">
+                    <td class="px-4 py-3 font-mono tabular-nums font-bold text-zinc-900 whitespace-nowrap">
                         {{ number_format((float) $rec->total_weight_kg, 2, ',', '.') }} Kg
+                    </td>
+
+                    {{-- Aksi --}}
+                    <td class="px-4 py-3 last:pr-5 text-right whitespace-nowrap">
+                        @php
+                            $receiveWaText = "*BUKTI PENERIMAAN MATERIAL TRUK - TBI ERP*\n"
+                                . "No. RI: {$rec->ri_no}\n"
+                                . "Tanggal: " . ($rec->receive_date ? $rec->receive_date->format('d/m/Y') : '-') . "\n"
+                                . ($rec->purchaseOrder ? "Ref PO: {$rec->purchaseOrder->po_number}\n" : "")
+                                . "No. Polisi: {$rec->vehicle_no}\n"
+                                . "Supplier: " . ($rec->supplier->name ?? '-') . "\n"
+                                . "Material: " . ($rec->material->name ?? '-') . "\n"
+                                . "Volume: " . number_format((float) $rec->volume_m3, 2, ',', '.') . " m³\n"
+                                . "Total Berat: " . number_format((float) $rec->total_weight_kg, 2, ',', '.') . " Kg (" . number_format((float) $rec->total_weight_kg / 1000, 2, ',', '.') . " Ton)";
+                        @endphp
+                        <div class="inline-flex items-center gap-1.5 justify-end">
+                            <x-ui.copy-button :text="$rec->ri_no" title="Salin No. RI" />
+                            <x-ui.whatsapp-button :message="$receiveWaText" label="WA" />
+                        </div>
                     </td>
                 </tr>
             @empty

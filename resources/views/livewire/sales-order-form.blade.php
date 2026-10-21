@@ -105,7 +105,10 @@
                 />
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100">
+            <div class="flex items-center justify-between gap-3 pt-3 border-t border-zinc-100">
+                <div>
+                    <x-ui.unsaved-changes-guard />
+                </div>
                 <x-ui.button
                     type="submit"
                     variant="primary"
@@ -147,6 +150,7 @@
             if (auth()->user()?->role === 'admin') {
                 $headers[] = 'Estimasi Kebutuhan (Admin)';
             }
+            $headers[] = 'Aksi';
         @endphp
 
         <x-ui.table :headers="$headers">
@@ -170,7 +174,10 @@
                 <tr class="hover:bg-zinc-50/80 transition-colors">
                     {{-- No. SO --}}
                     <td class="px-4 py-3 first:pl-5 font-mono font-semibold text-zinc-900 whitespace-nowrap">
-                        {{ $so->so_number }}
+                        <div class="inline-flex items-center gap-1.5">
+                            <span>{{ $so->so_number }}</span>
+                            <x-ui.copy-button :text="$so->so_number" title="Salin No. SO" />
+                        </div>
                     </td>
 
                     {{-- Tanggal --}}
@@ -222,7 +229,7 @@
 
                     {{-- Khusus Admin: Kolom Estimasi Material Tertutup --}}
                     @if (auth()->user()?->role === 'admin')
-                        <td class="px-4 py-3 last:pr-5 text-xs font-mono text-zinc-700 whitespace-nowrap">
+                        <td class="px-4 py-3 text-xs font-mono text-zinc-700 whitespace-nowrap">
                             <details class="cursor-pointer">
                                 <summary class="text-zinc-600 hover:text-zinc-900 underline font-sans text-xs">
                                     Lihat Estimasi Server
@@ -239,6 +246,25 @@
                             </details>
                         </td>
                     @endif
+
+                    {{-- Aksi --}}
+                    <td class="px-4 py-3 last:pr-5 text-right whitespace-nowrap">
+                        @php
+                            $soWaText = "*SALES ORDER BETON COR - TBI ERP*\n"
+                                . "No. SO: {$so->so_number}\n"
+                                . "Tanggal: " . ($so->order_date ? $so->order_date->format('d/m/Y') : '-') . "\n"
+                                . "Customer: " . ($so->customer->name ?? '-') . "\n"
+                                . "Lokasi: " . ($so->location ?: ($so->customer->address ?? '-')) . "\n"
+                                . "Mutu Beton: " . ($so->jobMix->mutu_code ?? '-') . "\n"
+                                . "Target Volume: " . number_format((float) $so->volume_m3, 2, ',', '.') . " m³\n"
+                                . "Terkirim: " . number_format((float) $so->delivered_volume_m3, 2, ',', '.') . " m³ ({$pct}%)\n"
+                                . "Status: {$statusLabel}";
+                        @endphp
+                        <div class="inline-flex items-center gap-1.5 justify-end">
+                            <x-ui.copy-button :text="$so->so_number" title="Salin No. SO" />
+                            <x-ui.whatsapp-button :message="$soWaText" label="WA" />
+                        </div>
+                    </td>
                 </tr>
             @empty
                 <tr>

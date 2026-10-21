@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MaterialReceivePrintController;
+use App\Http\Controllers\ProductionDocketPrintController;
 use App\Http\Controllers\PurchaseOrderPrintController;
 use App\Livewire\ActivityLogViewer;
 use App\Livewire\ExecutiveDashboard;
@@ -96,6 +98,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,petugas_gudang,demo')
         ->name('material-receives.index');
 
+    Route::get('/material-receives-report/pdf', [MaterialReceivePrintController::class, 'downloadReportPdf'])
+        ->middleware('role:admin,petugas_gudang,demo')
+        ->name('material-receives.report-pdf');
+
+    Route::get('/material-receives-report/excel', [MaterialReceivePrintController::class, 'downloadReportExcel'])
+        ->middleware('role:admin,petugas_gudang,demo')
+        ->name('material-receives.report-excel');
+
     // Pengiriman Kapal & Tongkang (Admin, Petugas Gudang, Demo)
     Route::get('/vessel-shipments', VesselShipmentForm::class)
         ->middleware('role:admin,petugas_gudang,demo')
@@ -105,6 +115,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/production-dockets', ProductionDocketForm::class)
         ->middleware('role:admin,operator_produksi,demo')
         ->name('production-dockets.index');
+
+    Route::get('/production-dockets/{docket}/pdf', [ProductionDocketPrintController::class, 'downloadSingle'])
+        ->middleware('role:admin,operator_produksi,demo')
+        ->name('production-dockets.pdf');
+
+    Route::get('/production-dockets-report/pdf', [ProductionDocketPrintController::class, 'downloadReportPdf'])
+        ->middleware('role:admin,operator_produksi,demo')
+        ->name('production-dockets.report-pdf');
+
+    Route::get('/production-dockets-report/excel', [ProductionDocketPrintController::class, 'downloadReportExcel'])
+        ->middleware('role:admin,operator_produksi,demo')
+        ->name('production-dockets.report-excel');
 
     // Rekonsiliasi Stok Material (Khusus Admin)
     Route::get('/reconciliation', StockReconciliation::class)

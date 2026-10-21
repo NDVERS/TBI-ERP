@@ -196,6 +196,7 @@ class SalesOrderForm extends Component
         $this->distance_km = '';
 
         session()->flash('success', "Sales Order {$soNumber} berhasil dibuat dan dihitung di server!");
+        $this->dispatch('form-saved');
     }
 
     public function updatingSearch(): void
