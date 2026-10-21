@@ -293,16 +293,30 @@
                         {{ number_format((float) $po->unit_price, 2, ',', '.') }}
                     </td>
                     <td class="text-right font-mono" style="font-weight: bold;">
-                        {{ number_format((float) $po->grand_total, 2, ',', '.') }}
+                        {{ number_format((float) ($po->subtotal ?: ((float) $po->qty_ordered * (float) $po->unit_price)), 2, ',', '.') }}
                     </td>
                 @endif
             </tr>
         </tbody>
         @if ($po->grand_total > 0)
             <tfoot>
+                @if ((float) $po->ppn_amount > 0)
+                    <tr>
+                        <td colspan="5" class="text-right" style="font-weight: 600; background-color: #fafafa; color: #52525b; font-size: 10px;">SUBTOTAL</td>
+                        <td colspan="2" class="text-right font-mono" style="background-color: #fafafa; font-size: 10px;">
+                            Rp {{ number_format((float) $po->subtotal, 2, ',', '.') }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" class="text-right" style="font-weight: 600; background-color: #fafafa; color: #52525b; font-size: 10px;">PPN (11%)</td>
+                        <td colspan="2" class="text-right font-mono" style="background-color: #fafafa; font-size: 10px;">
+                            Rp {{ number_format((float) $po->ppn_amount, 2, ',', '.') }}
+                        </td>
+                    </tr>
+                @endif
                 <tr>
-                    <td colspan="5" class="text-right" style="font-weight: bold; background-color: #fafafa;">GRAND TOTAL</td>
-                    <td colspan="2" class="text-right font-mono" style="font-weight: bold; font-size: 12px; background-color: #fafafa;">
+                    <td colspan="5" class="text-right" style="font-weight: bold; background-color: #f4f4f5;">GRAND TOTAL</td>
+                    <td colspan="2" class="text-right font-mono" style="font-weight: bold; font-size: 12px; background-color: #f4f4f5;">
                         Rp {{ number_format((float) $po->grand_total, 2, ',', '.') }}
                     </td>
                 </tr>

@@ -112,6 +112,7 @@ class UserManagement extends Component
             'operator_produksi',
             'surveyor_opname',
             'manajemen',
+            'demo',
         ];
 
         $rules = [

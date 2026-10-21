@@ -224,6 +224,7 @@
                             <option value="operator_produksi">Operator Produksi (Docket Batching)</option>
                             <option value="surveyor_opname">Surveyor Lapangan (Stock Opname Tablet)</option>
                             <option value="manajemen">Manajemen / Direksi (Dashboard Eksekutif)</option>
+                            <option value="demo">Akun Demo (Evaluasi / Terbatas)</option>
                         </select>
                         @error('role')
                             <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
