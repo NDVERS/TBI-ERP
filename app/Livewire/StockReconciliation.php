@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Services\ExcelReportService;
 use App\Services\StockReconciliationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
@@ -36,63 +37,28 @@ class StockReconciliation extends Component
         $this->selectedMonth = Carbon::now()->month;
     }
 
-    public function exportCsv(StockReconciliationService $service): StreamedResponse
+    public function exportExcel(StockReconciliationService $service, ExcelReportService $excelService): StreamedResponse
     {
         if (! Auth::check() || Auth::user()->role !== 'admin') {
             abort(403, 'Akses Ditolak: Hanya Admin yang dapat mengunduh data rekonsiliasi.');
         }
 
-        $year = $this->selectedYear;
-        $month = str_pad((string) $this->selectedMonth, 2, '0', STR_PAD_LEFT);
-        $fileName = "Rekonsiliasi_Stok_TBI_{$year}_{$month}.csv";
-
         $reconciliations = $service->reconcileAllMaterials($this->selectedYear, $this->selectedMonth);
 
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-        ];
+        return $excelService->exportStockReconciliation(
+            reconciliations: $reconciliations,
+            year: $this->selectedYear,
+            month: $this->selectedMonth,
+            printedBy: Auth::user()->name
+        );
+    }
 
-        return response()->stream(function () use ($reconciliations) {
-            $handle = fopen('php://output', 'w');
-            // Write UTF-8 BOM for Excel compatibility
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-
-            // Header row
-            fputcsv($handle, [
-                'ID Material',
-                'Nama Material',
-                'Satuan',
-                'Stok Awal Bulan (Kg)',
-                'Total Penerimaan (Kg)',
-                'Total Pemakaian (Kg)',
-                'Stok Akhir Teoritis (Kg)',
-                'Stok Fisik Opname (Kg)',
-                'Deviasi Selisih (Kg)',
-                'Deviasi (%)',
-                'Status Rekonsiliasi',
-            ]);
-
-            // Data rows (Values only, strictly no formula leakage)
-            foreach ($reconciliations as $row) {
-                $hasOpname = ! empty($row['has_opname']);
-                fputcsv($handle, [
-                    $row['material_id'],
-                    $row['material_name'],
-                    $row['unit'],
-                    number_format((float) $row['stok_awal'], 2, '.', ''),
-                    number_format((float) $row['penerimaan'], 2, '.', ''),
-                    number_format((float) $row['pemakaian'], 2, '.', ''),
-                    number_format((float) $row['stok_teoritis'], 2, '.', ''),
-                    $hasOpname ? number_format((float) $row['stok_fisik'], 2, '.', '') : 'Belum Diopname',
-                    $hasOpname ? number_format((float) $row['selisih'], 2, '.', '') : '-',
-                    $hasOpname ? number_format((float) $row['persentase_selisih'], 2, '.', '').'%' : '-',
-                    $row['status'],
-                ]);
-            }
-
-            fclose($handle);
-        }, 200, $headers);
+    /**
+     * Alias for exportExcel to maintain backward compatibility with previous callers/tests.
+     */
+    public function exportCsv(StockReconciliationService $service, ExcelReportService $excelService): StreamedResponse
+    {
+        return $this->exportExcel($service, $excelService);
     }
 
     public function render(StockReconciliationService $service): View

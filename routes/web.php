@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PurchaseOrderPrintController;
 use App\Livewire\ActivityLogViewer;
 use App\Livewire\ExecutiveDashboard;
 use App\Livewire\MasterJobMixIndex;
@@ -71,6 +72,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchase-orders', PurchaseOrderForm::class)
         ->middleware('role:admin,kasir_logistik,demo')
         ->name('purchase-orders.index');
+
+    // Cetak Dokumen & Laporan PDF Purchase Order
+    Route::get('/purchase-orders/{purchaseOrder}/pdf', PurchaseOrderPrintController::class.'@downloadSingle')
+        ->middleware('role:admin,kasir_logistik,demo')
+        ->name('purchase-orders.pdf');
+
+    Route::get('/purchase-orders-report/pdf', PurchaseOrderPrintController::class.'@downloadReport')
+        ->middleware('role:admin,kasir_logistik,demo')
+        ->name('purchase-orders.report-pdf');
+
+    Route::get('/purchase-orders-report/excel', PurchaseOrderPrintController::class.'@downloadReportExcel')
+        ->middleware('role:admin,kasir_logistik,demo')
+        ->name('purchase-orders.report-excel');
 
     // Stock Opname Lapangan di Tablet (Surveyor Opname, Admin, Demo)
     Route::get('/stock-opnames', StockOpnameForm::class)

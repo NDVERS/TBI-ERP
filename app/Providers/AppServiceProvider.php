@@ -18,7 +18,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if (class_exists(\Barryvdh\DomPDF\ServiceProvider::class) && ! $this->app->bound('dompdf.wrapper')) {
+            $this->app->register(\Barryvdh\DomPDF\ServiceProvider::class);
+        }
     }
 
     /**

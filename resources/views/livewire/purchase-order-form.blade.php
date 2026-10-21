@@ -239,16 +239,42 @@
         title="Riwayat Data Purchase Order (PO)"
         description="Daftar surat pesanan pembelian bahan baku material beserta status logistik pengapalan."
     >
-        {{-- Search Bar --}}
-        <div class="mb-4 max-w-sm">
-            <x-ui.input
-                wire:model.live.debounce.250ms="search"
-                placeholder="Cari No. PO, supplier, material, kapal, jetty..."
-                prefix="🔍"
-                :clearable="true"
-                :has-value="!empty($search)"
-                loading-target="search"
-            />
+        {{-- Search & Export Bar --}}
+        <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="w-full sm:max-w-sm">
+                <x-ui.input
+                    wire:model.live.debounce.250ms="search"
+                    placeholder="Cari No. PO, supplier, material, kapal, jetty..."
+                    prefix="🔍"
+                    :clearable="true"
+                    :has-value="!empty($search)"
+                    loading-target="search"
+                />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <a
+                    href="{{ route('purchase-orders.report-excel', ['month' => now()->month, 'year' => now()->year]) }}"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    title="Export Laporan Rekapitulasi Bulan Berjalan ke Excel (CSV)"
+                >
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Export Excel</span>
+                </a>
+
+                <a
+                    href="{{ route('purchase-orders.report-pdf', ['month' => now()->month, 'year' => now()->year]) }}"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    title="Cetak Laporan Rekapitulasi Bulan Berjalan (PDF)"
+                >
+                    <svg class="w-4 h-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>Cetak Rekap (PDF)</span>
+                </a>
+            </div>
         </div>
 
         @php
@@ -387,17 +413,30 @@
 
                     {{-- 17. AKSI --}}
                     <td class="px-4 py-3 last:pr-5 whitespace-nowrap text-right">
-                        <button
-                            type="button"
-                            wire:click="openEditModal({{ $po->id }})"
-                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 shadow-2xs transition-colors"
-                            title="Update Status & Logistik"
-                        >
-                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span>Update</span>
-                        </button>
+                        <div class="inline-flex items-center gap-1.5 justify-end">
+                            <a
+                                href="{{ route('purchase-orders.pdf', $po->id) }}"
+                                target="_blank"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 shadow-2xs transition-colors"
+                                title="Cetak Surat PO Resmi (PDF)"
+                            >
+                                <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <span>PDF</span>
+                            </a>
+                            <button
+                                type="button"
+                                wire:click="openEditModal({{ $po->id }})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 shadow-2xs transition-colors"
+                                title="Update Status & Logistik"
+                            >
+                                <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <span>Update</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             @empty

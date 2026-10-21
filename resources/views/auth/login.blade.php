@@ -1,8 +1,4 @@
 <x-layouts.app title="Login Pengguna">
-    <x-slot:head>
-        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-        <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
-    </x-slot:head>
 
     <div class="min-h-[75vh] flex flex-col justify-center items-center py-6 sm:px-6 lg:px-8">
         <div class="sm:mx-auto sm:w-full sm:max-w-md">

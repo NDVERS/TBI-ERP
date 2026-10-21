@@ -93,9 +93,11 @@ class ReconciliationAndProcurementTest extends TestCase
         $this->actingAs($admin);
 
         $component = Livewire::test(StockReconciliation::class);
-        $response = $component->call('exportCsv');
+        $component->call('exportExcel');
 
-        $this->assertNotNull($response);
+        $component->assertFileDownloaded();
+        $this->assertStringContainsString('Rekonsiliasi_Stok_TBI_', $component->effects['download']['name'] ?? '');
+        $this->assertStringEndsWith('.xlsx', $component->effects['download']['name'] ?? '');
     }
 
     // --- 2. Material Receive Tests ---

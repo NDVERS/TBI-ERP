@@ -14,9 +14,11 @@
     <title>{{ $title ? $title . ' — TBI ERP' : 'TBI - Batching Plant ERP' }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}?v=tbi2">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}?v=tbi2">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}?v=tbi2">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=tbi2">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}?v=tbi2">
     {{ $head ?? '' }}
 
     <!-- Scripts & Styles -->
