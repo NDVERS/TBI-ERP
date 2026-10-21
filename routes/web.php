@@ -76,15 +76,15 @@ Route::middleware('auth')->group(function () {
         ->name('purchase-orders.index');
 
     // Cetak Dokumen & Laporan PDF Purchase Order
-    Route::get('/purchase-orders/{purchaseOrder}/pdf', PurchaseOrderPrintController::class.'@downloadSingle')
+    Route::get('/purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderPrintController::class, 'downloadSingle'])
         ->middleware('role:admin,kasir_logistik,demo')
         ->name('purchase-orders.pdf');
 
-    Route::get('/purchase-orders-report/pdf', PurchaseOrderPrintController::class.'@downloadReport')
+    Route::get('/purchase-orders-report/pdf', [PurchaseOrderPrintController::class, 'downloadReport'])
         ->middleware('role:admin,kasir_logistik,demo')
         ->name('purchase-orders.report-pdf');
 
-    Route::get('/purchase-orders-report/excel', PurchaseOrderPrintController::class.'@downloadReportExcel')
+    Route::get('/purchase-orders-report/excel', [PurchaseOrderPrintController::class, 'downloadReportExcel'])
         ->middleware('role:admin,kasir_logistik,demo')
         ->name('purchase-orders.report-excel');
 
