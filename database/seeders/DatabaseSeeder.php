@@ -844,5 +844,8 @@ class DatabaseSeeder extends Seeder
                 ])
             );
         }
+
+        // 8. Seed Riwayat Data Produksi Harian (Dari Sheet Produksi TBI - ERP.xlsx)
+        $this->call(HistoricalProductionSeeder::class);
     }
 }
