@@ -521,8 +521,8 @@
             @endforelse
         </x-ui.table>
 
-        @if ($purchaseOrders->hasPages())
-            <div class="mt-4">
+        @if ($purchaseOrders->hasPages() || isset($this->perPage) || $purchaseOrders->total() > 0)
+            <div class="mt-4 pt-3 border-t border-zinc-100">
                 {{ $purchaseOrders->links() }}
             </div>
         @endif

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\AdditivePowder;
 use App\Models\LabConversion;
 use App\Models\Material;
 use App\Models\MaterialReceive;
@@ -11,6 +12,7 @@ use App\Services\ProcurementCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
@@ -36,6 +38,8 @@ class MaterialReceiveForm extends Component
     #[Rule('required|exists:materials,id')]
     public ?int $material_id = null;
 
+    public bool $isSemen = false;
+
     #[Rule('required|string|max:50')]
     public string $vehicle_no = '';
 
@@ -60,14 +64,24 @@ class MaterialReceiveForm extends Component
 
     public ?string $filterEndDate = null;
 
-    // State untuk Modal Konversi Lab: Additive (Kg) -> SBTJM2 (Liter)
+    public int $perPage = 10;
+
+    // State untuk Modal Konversi Lab: Additive Powder (Kg) -> SBTJM2 (Liter)
     public bool $showConversionModal = false;
 
     public string $conv_date = '';
 
-    public string|float $conv_additive_kg = '';
+    public string|float $conv_sbtjm2_liter = 5000;
 
-    public string|float $conv_sbtjm2_liter = '';
+    public string|float $conv_snf1_kg = 750;
+
+    public string|float $conv_snf2_kg = 750;
+
+    public string|float $conv_sodium_glukonate_kg = 275;
+
+    public string|float $conv_maltodextrine_kg = 50;
+
+    public string|float $conv_water_kg = 3175;
 
     public string $conv_notes = '';
 
@@ -87,6 +101,11 @@ class MaterialReceiveForm extends Component
     }
 
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
     {
         $this->resetPage();
     }
@@ -142,6 +161,7 @@ class MaterialReceiveForm extends Component
             if ($material) {
                 $this->masterDensity = (float) $material->density_kg_m3;
                 $this->density = (string) $material->density_kg_m3;
+                $this->isSemen = (strcasecmp($material->name, 'Semen') === 0);
 
                 $matName = strtoupper($material->name);
                 if (str_contains($matName, 'SBTJM2')) {
@@ -163,11 +183,13 @@ class MaterialReceiveForm extends Component
                 $this->masterDensity = null;
                 $this->density = '';
                 $this->isInternalMaterial = false;
+                $this->isSemen = false;
             }
         } else {
             $this->masterDensity = null;
             $this->density = '';
             $this->isInternalMaterial = false;
+            $this->isSemen = false;
         }
     }
 
@@ -195,11 +217,50 @@ class MaterialReceiveForm extends Component
         $vol = (float) str_replace(',', '.', (string) $this->volume_m3);
         $den = (float) str_replace(',', '.', (string) $this->density);
 
-        if ($vol <= 0 || $den <= 0) {
+        if ($vol <= 0) {
+            return 0.0;
+        }
+
+        if ($this->isSemen) {
+            // Untuk Semen, pecahan/input dalam Tonase (Ton), 1 Ton = 1.000 Kg
+            return round($vol * 1000, 2);
+        }
+
+        if ($den <= 0) {
             return 0.0;
         }
 
         return round($vol * $den, 2);
+    }
+
+    #[Computed]
+    public function totalAdditivePowderUsed(): float
+    {
+        $snf1 = (float) str_replace(',', '.', (string) $this->conv_snf1_kg);
+        $snf2 = (float) str_replace(',', '.', (string) $this->conv_snf2_kg);
+        $glu = (float) str_replace(',', '.', (string) $this->conv_sodium_glukonate_kg);
+        $mal = (float) str_replace(',', '.', (string) $this->conv_maltodextrine_kg);
+
+        return round($snf1 + $snf2 + $glu + $mal, 2);
+    }
+
+    public function calculateAutoRecipe(): void
+    {
+        $target = (float) str_replace(',', '.', (string) $this->conv_sbtjm2_liter);
+        if ($target > 0) {
+            // Rasio batch standar (5.000 L SBTJM2):
+            // SNF 001: 750 Kg (15%)
+            // SNF 002: 750 Kg (15%)
+            // Sodium Glukonate: 275 Kg (5.5% ~ 6%)
+            // Maltodextrine: 50 Kg (1%)
+            // Air: 3.175 Kg (63.5%)
+            $factor = $target / 5000.0;
+            $this->conv_snf1_kg = round(750 * $factor, 2);
+            $this->conv_snf2_kg = round(750 * $factor, 2);
+            $this->conv_sodium_glukonate_kg = round(275 * $factor, 2);
+            $this->conv_maltodextrine_kg = round(50 * $factor, 2);
+            $this->conv_water_kg = round(3175 * $factor, 2);
+        }
     }
 
     public function save(ProcurementCalculatorService $calculator): void
@@ -241,8 +302,16 @@ class MaterialReceiveForm extends Component
         $material = Material::findOrFail($this->material_id);
         $densityUsed = (float) $this->density;
 
-        // Auto-calculate total weight in Kg using user/custom density
-        $totalWeight = $calculator->calculateReceiveWeight($this->volume_m3, $densityUsed);
+        if ($this->isSemen) {
+            $tonInput = (float) $this->volume_m3;
+            $totalWeight = round($tonInput * 1000, 2);
+            $volumeM3 = $tonInput;
+            $densityUsed = 1000.0;
+        } else {
+            $volumeM3 = (float) $this->volume_m3;
+            $totalWeight = $calculator->calculateReceiveWeight($volumeM3, $densityUsed);
+        }
+
         $riNumber = strtoupper(trim($this->ri_no));
 
         MaterialReceive::create([
@@ -253,7 +322,7 @@ class MaterialReceiveForm extends Component
             'vehicle_no' => strtoupper(trim($this->vehicle_no)),
             'ri_no' => $riNumber,
             'time_in' => null,
-            'volume_m3' => (float) $this->volume_m3,
+            'volume_m3' => $volumeM3,
             'density_used' => $densityUsed,
             'total_weight_kg' => $totalWeight,
         ]);
@@ -281,19 +350,23 @@ class MaterialReceiveForm extends Component
         $this->density = '';
         $this->masterDensity = null;
         $this->isInternalMaterial = false;
+        $this->isSemen = false;
         $this->material_id = null;
         $this->supplier_id = null;
 
-        $formattedKg = number_format($totalWeight, 2, ',', '.');
-        session()->flash('success', "Penerimaan material (RI: {$riNumber}) berhasil dicatat ({$formattedKg} Kg){$poNotice}");
+        $weightDisplay = $this->isSemen
+            ? number_format($totalWeight / 1000, 2, ',', '.').' Ton'
+            : number_format($totalWeight, 2, ',', '.').' Kg';
+
+        session()->flash('success', "Penerimaan material (RI: {$riNumber}) berhasil dicatat ({$weightDisplay}){$poNotice}");
         $this->dispatch('form-saved');
     }
 
     public function openConversionModal(): void
     {
         $this->conv_date = Carbon::now()->format('Y-m-d');
-        $this->conv_additive_kg = '';
-        $this->conv_sbtjm2_liter = '';
+        $this->conv_sbtjm2_liter = 5000;
+        $this->calculateAutoRecipe();
         $this->conv_notes = '';
         $this->showConversionModal = true;
     }
@@ -316,42 +389,74 @@ class MaterialReceiveForm extends Component
             abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk menginput konversi bahan kimia lab.');
         }
 
-        if (is_string($this->conv_additive_kg)) {
-            $this->conv_additive_kg = trim(str_replace(',', '.', $this->conv_additive_kg));
-        }
         if (is_string($this->conv_sbtjm2_liter)) {
             $this->conv_sbtjm2_liter = trim(str_replace(',', '.', $this->conv_sbtjm2_liter));
+        }
+        if (is_string($this->conv_snf1_kg)) {
+            $this->conv_snf1_kg = trim(str_replace(',', '.', $this->conv_snf1_kg));
+        }
+        if (is_string($this->conv_snf2_kg)) {
+            $this->conv_snf2_kg = trim(str_replace(',', '.', $this->conv_snf2_kg));
+        }
+        if (is_string($this->conv_sodium_glukonate_kg)) {
+            $this->conv_sodium_glukonate_kg = trim(str_replace(',', '.', $this->conv_sodium_glukonate_kg));
+        }
+        if (is_string($this->conv_maltodextrine_kg)) {
+            $this->conv_maltodextrine_kg = trim(str_replace(',', '.', $this->conv_maltodextrine_kg));
+        }
+        if (is_string($this->conv_water_kg)) {
+            $this->conv_water_kg = trim(str_replace(',', '.', $this->conv_water_kg));
         }
 
         $this->validate([
             'conv_date' => 'required|date',
-            'conv_additive_kg' => 'required|numeric|min:0.01|max:999999',
             'conv_sbtjm2_liter' => 'required|numeric|min:0.01|max:999999',
+            'conv_snf1_kg' => 'required|numeric|min:0|max:999999',
+            'conv_snf2_kg' => 'required|numeric|min:0|max:999999',
+            'conv_sodium_glukonate_kg' => 'required|numeric|min:0|max:999999',
+            'conv_maltodextrine_kg' => 'required|numeric|min:0|max:999999',
+            'conv_water_kg' => 'nullable|numeric|min:0|max:999999',
             'conv_notes' => 'nullable|string|max:255',
         ], [
             'conv_date.required' => 'Tanggal olah lab wajib diisi.',
-            'conv_additive_kg.required' => 'Jumlah Additive (Kg) digunakan wajib diisi.',
-            'conv_additive_kg.min' => 'Jumlah Additive minimal 0.01 Kg.',
             'conv_sbtjm2_liter.required' => 'Hasil jadi SBTJM2 (Liter) wajib diisi.',
             'conv_sbtjm2_liter.min' => 'Hasil jadi SBTJM2 minimal 0.01 Liter.',
+            'conv_snf1_kg.required' => 'Takaran SNF-C 001 wajib diisi.',
+            'conv_snf2_kg.required' => 'Takaran SNF-C 002 wajib diisi.',
+            'conv_sodium_glukonate_kg.required' => 'Takaran Sodium Glukonate wajib diisi.',
+            'conv_maltodextrine_kg.required' => 'Takaran Maltodextrine wajib diisi.',
         ]);
 
-        $additiveKg = (float) $this->conv_additive_kg;
         $sbtjm2Liter = (float) $this->conv_sbtjm2_liter;
+        $snf1Kg = (float) $this->conv_snf1_kg;
+        $snf2Kg = (float) $this->conv_snf2_kg;
+        $glukonateKg = (float) $this->conv_sodium_glukonate_kg;
+        $maltodextrineKg = (float) $this->conv_maltodextrine_kg;
+        $waterKg = (float) ($this->conv_water_kg ?: 0);
 
-        $tbiSupplier = Supplier::firstOrCreate(
-            ['name' => 'TBI Plant'],
-            ['material_type' => 'PRODUKSI INTERNAL LAB', 'lead_time_days' => 0, 'notes' => 'Internal Production / Lab']
-        );
+        $totalPowderUsed = round($snf1Kg + $snf2Kg + $glukonateKg + $maltodextrineKg, 2);
+        if ($totalPowderUsed <= 0) {
+            $this->addError('conv_snf1_kg', 'Total serbuk kimia yang digunakan tidak boleh 0 Kg.');
 
-        $sbtjm2Material = Material::where('name', 'like', '%SBTJM2%')->first();
-        if (! $sbtjm2Material) {
-            $sbtjm2Material = Material::create([
-                'name' => 'SBTJM2',
-                'unit' => 'Liter',
-                'density_kg_m3' => 1172.00,
-                'initial_stock_kg' => 0.0,
-            ]);
+            return;
+        }
+
+        // Cek kecukupan stok masing-masing powder
+        $powders = AdditivePowder::all()->keyBy('code');
+        $checks = [
+            'SNF_001' => ['qty' => $snf1Kg, 'field' => 'conv_snf1_kg', 'name' => 'Sodium Napthalane (SNF-C) 001'],
+            'SNF_002' => ['qty' => $snf2Kg, 'field' => 'conv_snf2_kg', 'name' => 'Sodium Napthalane (SNF-C) 002'],
+            'SODIUM_GLUKONATE' => ['qty' => $glukonateKg, 'field' => 'conv_sodium_glukonate_kg', 'name' => 'Sodium Glukonate'],
+            'MALTODEXTRINE' => ['qty' => $maltodextrineKg, 'field' => 'conv_maltodextrine_kg', 'name' => 'Maltodextrine'],
+        ];
+
+        foreach ($checks as $code => $check) {
+            $powder = $powders->get($code);
+            if ($powder && (float) $powder->stock_kg < $check['qty']) {
+                $this->addError($check['field'], "Stok {$check['name']} tidak mencukupi (Tersisa {$powder->stock_kg} Kg).");
+
+                return;
+            }
         }
 
         $todayCode = Carbon::parse($this->conv_date)->format('Ymd');
@@ -359,43 +464,80 @@ class MaterialReceiveForm extends Component
         $conversionNo = sprintf('LAB-%s-%03d', $todayCode, $labCount);
         $riNumber = sprintf('RI-LAB-%s-%03d', $todayCode, $labCount);
 
-        // Buat penerimaan internal SBTJM2 (Liter)
-        $receive = MaterialReceive::create([
-            'purchase_order_id' => null,
-            'receive_date' => $this->conv_date,
-            'supplier_id' => $tbiSupplier->id,
-            'material_id' => $sbtjm2Material->id,
-            'vehicle_no' => 'INTERNAL',
-            'ri_no' => $riNumber,
-            'time_in' => null,
-            'volume_m3' => round($sbtjm2Liter / 1000, 3),
-            'density_used' => (float) ($sbtjm2Material->density_kg_m3 ?? 1172.0),
-            'total_weight_kg' => $sbtjm2Liter,
-        ]);
+        DB::transaction(function () use ($sbtjm2Liter, $snf1Kg, $snf2Kg, $glukonateKg, $maltodextrineKg, $waterKg, $totalPowderUsed, $powders, $conversionNo, $riNumber) {
+            // Potong stok masing-masing powder
+            if ($p1 = $powders->get('SNF_001')) {
+                $p1->decrement('stock_kg', $snf1Kg);
+            }
+            if ($p2 = $powders->get('SNF_002')) {
+                $p2->decrement('stock_kg', $snf2Kg);
+            }
+            if ($p3 = $powders->get('SODIUM_GLUKONATE')) {
+                $p3->decrement('stock_kg', $glukonateKg);
+            }
+            if ($p4 = $powders->get('MALTODEXTRINE')) {
+                $p4->decrement('stock_kg', $maltodextrineKg);
+            }
 
-        // Catat entri konversi laboratorium
-        LabConversion::create([
-            'conversion_no' => $conversionNo,
-            'conversion_date' => $this->conv_date,
-            'additive_used_kg' => $additiveKg,
-            'sbtjm2_produced_liter' => $sbtjm2Liter,
-            'notes' => $this->conv_notes,
-            'material_receive_id' => $receive->id,
-            'created_by' => Auth::id(),
-        ]);
+            // Potong stok master Additive jika ada di tabel materials
+            $masterAdditive = Material::where('name', 'Additive')->first();
+            if ($masterAdditive) {
+                // Stock awal teoritis berkurang atau tercatat di pemakaian
+            }
+
+            $tbiSupplier = Supplier::firstOrCreate(
+                ['name' => 'TBI Plant'],
+                ['material_type' => 'PRODUKSI INTERNAL LAB', 'lead_time_days' => 0, 'notes' => 'Internal Production / Lab']
+            );
+
+            $sbtjm2Material = Material::firstOrCreate(
+                ['name' => 'SBTJM2'],
+                ['unit' => 'Liter', 'density_kg_m3' => 1172.00, 'initial_stock_kg' => 0.0]
+            );
+
+            // Buat penerimaan internal SBTJM2 (Liter)
+            $receive = MaterialReceive::create([
+                'purchase_order_id' => null,
+                'receive_date' => $this->conv_date,
+                'supplier_id' => $tbiSupplier->id,
+                'material_id' => $sbtjm2Material->id,
+                'vehicle_no' => 'INTERNAL',
+                'ri_no' => $riNumber,
+                'time_in' => null,
+                'volume_m3' => round($sbtjm2Liter / 1000, 3),
+                'density_used' => (float) ($sbtjm2Material->density_kg_m3 ?? 1172.0),
+                'total_weight_kg' => $sbtjm2Liter,
+            ]);
+
+            // Catat entri konversi laboratorium dengan breakdown serbuk kimia
+            LabConversion::create([
+                'conversion_no' => $conversionNo,
+                'conversion_date' => $this->conv_date,
+                'additive_used_kg' => $totalPowderUsed,
+                'snf1_kg' => $snf1Kg,
+                'snf2_kg' => $snf2Kg,
+                'sodium_glukonate_kg' => $glukonateKg,
+                'maltodextrine_kg' => $maltodextrineKg,
+                'water_kg' => $waterKg,
+                'sbtjm2_produced_liter' => $sbtjm2Liter,
+                'notes' => $this->conv_notes,
+                'material_receive_id' => $receive->id,
+                'created_by' => Auth::id(),
+            ]);
+        });
 
         $this->showConversionModal = false;
-        $this->conv_additive_kg = '';
-        $this->conv_sbtjm2_liter = '';
-        $this->conv_notes = '';
+        $this->dispatch('open-additive-modal');
 
-        session()->flash('success', "Konversi Lab Berhasil: {$additiveKg} Kg Additive diproses menjadi {$sbtjm2Liter} Liter SBTJM2 (No. RI: {$riNumber}, Batch: {$conversionNo}).");
+        session()->flash('success', "Konversi Lab Berhasil: {$totalPowderUsed} Kg Serbuk Additive diproses menjadi {$sbtjm2Liter} Liter SBTJM2 (No. RI: {$riNumber}, Batch: {$conversionNo}).");
     }
 
     public function render(): View
     {
         $suppliers = Supplier::orderBy('name')->get(['id', 'name'])->unique('name');
-        $materials = Material::orderBy('name')->get(['id', 'name', 'unit']);
+        // SBTJM2 dan Air dikecualikan dari penerimaan truk luar
+        $materials = Material::whereNotIn('name', ['SBTJM2', 'Air'])->orderBy('name')->get(['id', 'name', 'unit']);
+        $powders = AdditivePowder::orderBy('id')->get();
 
         $activePOs = PurchaseOrder::query()
             ->with(['supplier', 'material'])
@@ -425,7 +567,7 @@ class MaterialReceiveForm extends Component
             ->when($this->filterEndDate, fn ($q) => $q->whereDate('receive_date', '<=', $this->filterEndDate))
             ->latest('receive_date')
             ->latest('id')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         $recentConversions = LabConversion::query()
             ->with(['creator', 'materialReceive'])
@@ -437,6 +579,7 @@ class MaterialReceiveForm extends Component
         return view('livewire.material-receive-form', [
             'suppliers' => $suppliers,
             'materials' => $materials,
+            'powders' => $powders,
             'activePOs' => $activePOs,
             'receives' => $receives,
             'recentConversions' => $recentConversions,

@@ -81,7 +81,7 @@ class DatabaseSeeder extends Seeder
         $materials = [
             [
                 'name' => 'Semen',
-                'unit' => 'Kg',
+                'unit' => 'Ton',
                 'density_kg_m3' => 1000.00,
                 'initial_stock_kg' => 33739750.00,
                 'notes' => 'Semen Portland / OPC',
@@ -148,6 +148,56 @@ class DatabaseSeeder extends Seeder
             DB::table('materials')->updateOrInsert(
                 ['name' => $material['name']],
                 array_merge($material, [
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ])
+            );
+        }
+
+        // 2b. Seed Bahan Kimia Additive (Additive Powders Breakdown)
+        $additivePowders = [
+            [
+                'code' => 'SNF_001',
+                'name' => 'Sodium Napthalane (SNF-C) 001',
+                'recipe_quantity_kg' => 750.00,
+                'standard_percentage' => 15.00,
+                'stock_kg' => 1743.75,
+                'unit' => 'Kg',
+                'notes' => 'Bahan powder utama SNF-C 001 import',
+            ],
+            [
+                'code' => 'SNF_002',
+                'name' => 'Sodium Napthalane (SNF-C) 002',
+                'recipe_quantity_kg' => 750.00,
+                'standard_percentage' => 15.00,
+                'stock_kg' => 1743.75,
+                'unit' => 'Kg',
+                'notes' => 'Bahan powder utama SNF-C 002 import',
+            ],
+            [
+                'code' => 'SODIUM_GLUKONATE',
+                'name' => 'Sodium Glukonate',
+                'recipe_quantity_kg' => 275.00,
+                'standard_percentage' => 6.00,
+                'stock_kg' => 639.38,
+                'unit' => 'Kg',
+                'notes' => 'Bahan retarder / plasticizer powder',
+            ],
+            [
+                'code' => 'MALTODEXTRINE',
+                'name' => 'Maltodextrine',
+                'recipe_quantity_kg' => 50.00,
+                'standard_percentage' => 1.00,
+                'stock_kg' => 116.87,
+                'unit' => 'Kg',
+                'notes' => 'Bahan stabilizer / modifier powder',
+            ],
+        ];
+
+        foreach ($additivePowders as $powder) {
+            DB::table('additive_powders')->updateOrInsert(
+                ['code' => $powder['code']],
+                array_merge($powder, [
                     'updated_at' => $now,
                     'created_at' => $now,
                 ])

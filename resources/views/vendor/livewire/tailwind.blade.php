@@ -39,7 +39,7 @@ foreach ($rawPages as $p) {
 @endphp
 
 <div>
-    @if ($paginator->hasPages() || isset($this->perPage))
+    @if ($paginator->hasPages() || isset($this->perPage) || $paginator->total() > 0)
         <nav role="navigation" aria-label="Pagination Navigation" class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-600">
             {{-- Mobile Pagination (< sm) --}}
             <div class="flex flex-col gap-2 w-full sm:hidden">
@@ -102,6 +102,7 @@ foreach ($rawPages as $p) {
                                 wire:model.live="perPage"
                                 class="h-7 px-1.5 text-xs font-medium rounded border border-zinc-200 bg-white text-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 shadow-2xs"
                             >
+                                <option value="5">5</option>
                                 <option value="10">10</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -172,6 +173,7 @@ foreach ($rawPages as $p) {
                                 wire:model.live="perPage"
                                 class="h-8 px-2 text-xs font-medium rounded-md border border-zinc-200 bg-white text-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900 shadow-2xs"
                             >
+                                <option value="5">5</option>
                                 <option value="10">10</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>

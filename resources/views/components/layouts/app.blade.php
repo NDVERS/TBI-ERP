@@ -460,6 +460,9 @@
         </div>
     </div>
 
+    <!-- Global Additive Chemical Powder Breakdown Modal -->
+    <livewire:additive-breakdown-modal />
+
     @livewireScripts
 </body>
 </html>

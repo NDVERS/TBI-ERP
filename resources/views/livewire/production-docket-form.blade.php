@@ -632,8 +632,8 @@
             @endforelse
         </x-ui.table>
 
-        @if ($dockets->hasPages())
-            <div class="pt-4">
+        @if ($dockets->hasPages() || isset($this->perPage) || $dockets->total() > 0)
+            <div class="pt-4 border-t border-zinc-100">
                 {{ $dockets->links() }}
             </div>
         @endif

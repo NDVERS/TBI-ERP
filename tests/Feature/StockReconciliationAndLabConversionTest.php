@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\AdditiveBreakdownModal;
 use App\Livewire\MaterialReceiveForm;
 use App\Livewire\StockReconciliation;
+use App\Models\AdditivePowder;
 use App\Models\LabConversion;
 use App\Models\Material;
 use App\Models\MaterialReceive;
 use App\Models\StockOpname;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Services\StockReconciliationService;
 use Database\Seeders\DatabaseSeeder;
@@ -90,29 +93,43 @@ class StockReconciliationAndLabConversionTest extends TestCase
         $additive = Material::where('name', 'Additive')->first();
         $sbtjm2 = Material::where('name', 'SBTJM2')->first();
 
+        $initialSnf1 = (float) AdditivePowder::where('code', 'SNF_001')->value('stock_kg');
+
         $service = app(StockReconciliationService::class);
 
         $initialAdditiveTeoritis = $service->reconcileMaterial($additive, now()->year, now()->month)['stok_teoritis'];
         $initialSbtjm2Teoritis = $service->reconcileMaterial($sbtjm2, now()->year, now()->month)['stok_teoritis'];
 
-        // Eksekusi konversi lab melalui modal form MaterialReceiveForm
+        // Eksekusi konversi lab melalui modal form MaterialReceiveForm dengan 4 serbuk kimia
         Livewire::test(MaterialReceiveForm::class)
             ->call('openConversionModal')
             ->assertSet('showConversionModal', true)
             ->set('conv_date', now()->format('Y-m-d'))
-            ->set('conv_additive_kg', 250.00)
             ->set('conv_sbtjm2_liter', 250.00)
+            ->set('conv_snf1_kg', 100.00)
+            ->set('conv_snf2_kg', 100.00)
+            ->set('conv_sodium_glukonate_kg', 40.00)
+            ->set('conv_maltodextrine_kg', 10.00)
+            ->set('conv_water_kg', 150.00)
             ->set('conv_notes', 'Batch Lab Testing Racikan #01')
             ->call('saveConversion')
             ->assertHasNoErrors()
             ->assertSet('showConversionModal', false);
 
-        // Verifikasi record LabConversion terbentuk
+        // Verifikasi record LabConversion terbentuk dengan rincian serbuk
         $conversion = LabConversion::where('notes', 'Batch Lab Testing Racikan #01')->first();
         $this->assertNotNull($conversion);
         $this->assertEquals(250.00, (float) $conversion->additive_used_kg);
+        $this->assertEquals(100.00, (float) $conversion->snf1_kg);
+        $this->assertEquals(100.00, (float) $conversion->snf2_kg);
+        $this->assertEquals(40.00, (float) $conversion->sodium_glukonate_kg);
+        $this->assertEquals(10.00, (float) $conversion->maltodextrine_kg);
         $this->assertEquals(250.00, (float) $conversion->sbtjm2_produced_liter);
         $this->assertNotNull($conversion->material_receive_id);
+
+        // Verifikasi sisa stok powder di additive_powders berkurang
+        $afterSnf1 = (float) AdditivePowder::where('code', 'SNF_001')->value('stock_kg');
+        $this->assertEquals($initialSnf1 - 100.00, $afterSnf1);
 
         // Verifikasi record MaterialReceive internal untuk SBTJM2 terbentuk
         $receive = MaterialReceive::find($conversion->material_receive_id);
@@ -131,6 +148,58 @@ class StockReconciliationAndLabConversionTest extends TestCase
 
         // Penerimaan SBTJM2 bertambah 250 Liter, stok teoritis SBTJM2 bertambah 250 Liter
         $this->assertEquals($initialSbtjm2Teoritis + 250.00, $afterSbtjm2['stok_teoritis']);
-        $this->assertEquals($initialSbtjm2Teoritis + 250.00, $afterSbtjm2['stok_teoritis']);
+    }
+
+    public function test_material_receives_excludes_sbtjm2_and_air_from_dropdown(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->actingAs($admin);
+
+        Livewire::test(MaterialReceiveForm::class)
+            ->assertViewHas('materials', function ($materials) {
+                return ! $materials->contains('name', 'SBTJM2') &&
+                       ! $materials->contains('name', 'Air');
+            });
+    }
+
+    public function test_semen_input_in_tons_is_calculated_and_stored_in_kg(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->actingAs($admin);
+
+        $semen = Material::where('name', 'Semen')->first();
+        $supplier = Supplier::first();
+
+        Livewire::test(MaterialReceiveForm::class)
+            ->set('receive_date', now()->format('Y-m-d'))
+            ->set('ri_no', 'RI-SEMEN-TON-01')
+            ->set('vehicle_no', 'DN 9999 SM')
+            ->set('supplier_id', $supplier->id)
+            ->set('material_id', $semen->id)
+            ->assertSet('isSemen', true)
+            ->set('volume_m3', 25.50) // 25.50 Ton
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $saved = MaterialReceive::where('ri_no', 'RI-SEMEN-TON-01')->first();
+        $this->assertNotNull($saved);
+        // 25.50 Ton = 25,500 Kg
+        $this->assertEquals(25500.00, (float) $saved->total_weight_kg);
+    }
+
+    public function test_additive_breakdown_modal_opens_and_renders_powders(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->actingAs($admin);
+
+        Livewire::test(AdditiveBreakdownModal::class)
+            ->assertSet('isOpen', false)
+            ->dispatch('open-additive-modal')
+            ->assertSet('isOpen', true)
+            ->assertSee('Sodium Napthalane (SNF-C) 001')
+            ->assertSee('Sodium Glukonate')
+            ->assertSee('Maltodextrine')
+            ->call('close')
+            ->assertSet('isOpen', false);
     }
 }

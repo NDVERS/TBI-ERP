@@ -212,7 +212,21 @@
                 <tr class="{{ $isAnomaly ? 'bg-red-50/70 border-l-4 border-l-red-600 hover:bg-red-50' : 'hover:bg-zinc-50/80' }} transition-colors">
                     {{-- Nama Material --}}
                     <td class="px-4 py-3 first:pl-5 font-semibold text-zinc-900 whitespace-nowrap">
-                        {{ $row['material_name'] }}
+                        @if (strcasecmp($row['material_name'], 'Additive') === 0)
+                            <div class="flex items-center gap-2">
+                                <span>{{ $row['material_name'] }}</span>
+                                <button
+                                    type="button"
+                                    @click="$dispatch('open-additive-modal')"
+                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200 transition-colors shadow-2xs"
+                                    title="Klik untuk melihat rincian 4 serbuk kimia Additive"
+                                >
+                                    <span>🔍 Detail Powder</span>
+                                </button>
+                            </div>
+                        @else
+                            {{ $row['material_name'] }}
+                        @endif
                         <span class="text-[11px] font-mono text-zinc-400 font-normal block">
                             Satuan: {{ $row['unit'] }}
                         </span>

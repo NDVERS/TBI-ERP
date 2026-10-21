@@ -54,7 +54,7 @@
                         Material Agregat / Pasir <span class="text-red-500">*</span>
                     </label>
                     <select
-                        wire:model="material_id"
+                        wire:model.live="material_id"
                         class="w-full h-12 px-3 rounded-md border border-zinc-300 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
                         required
                     >
@@ -245,7 +245,7 @@
                             class="w-full h-12 px-3 pr-12 rounded-md border border-zinc-300 font-mono text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white"
                         />
                         <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 font-mono text-xs">
-                            Kg
+                            {{ $selectedMaterialUnit ?? 'Kg' }}
                         </span>
                     </div>
                     @error('stock_bin')
@@ -352,7 +352,14 @@
                     @if (auth()->user()?->role === 'admin')
                         <td class="px-4 py-3 last:pr-5 font-mono text-xs text-zinc-900 whitespace-nowrap">
                             <div>Vol: <span class="font-bold">{{ number_format((float) $opname->calculated_volume_m3, 4, ',', '.') }}</span> m³</div>
-                            <div class="text-zinc-600">Berat: <span class="font-bold">{{ number_format((float) $opname->calculated_weight_kg, 2, ',', '.') }}</span> Kg</div>
+                            @if (($opname->material?->name ?? '') === 'Semen' || strtoupper($opname->material?->unit ?? '') === 'TON')
+                                <div class="text-zinc-700">
+                                    Berat: <span class="font-bold text-zinc-900">{{ number_format((float) $opname->calculated_weight_kg / 1000, 2, ',', '.') }}</span> Ton
+                                    <span class="text-[11px] text-zinc-400 font-normal">({{ number_format((float) $opname->calculated_weight_kg, 2, ',', '.') }} Kg)</span>
+                                </div>
+                            @else
+                                <div class="text-zinc-600">Berat: <span class="font-bold">{{ number_format((float) $opname->calculated_weight_kg, 2, ',', '.') }}</span> {{ $opname->material?->unit ?? 'Kg' }}</div>
+                            @endif
                         </td>
                     @endif
                 </tr>
@@ -365,8 +372,8 @@
             @endforelse
         </x-ui.table>
 
-        @if ($opnames->hasPages())
-            <div class="mt-4">
+        @if ($opnames->hasPages() || isset($this->perPage) || $opnames->total() > 0)
+            <div class="mt-4 pt-3 border-t border-zinc-100">
                 {{ $opnames->links() }}
             </div>
         @endif

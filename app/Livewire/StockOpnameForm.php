@@ -43,6 +43,12 @@ class StockOpnameForm extends Component
     // Stock Bin tambahan di hopper / batcher
     public string|float $stock_bin = '';
 
+    public ?string $selectedMaterialUnit = 'Kg';
+
+    public bool $isSemen = false;
+
+    public int $perPage = 10;
+
     public string $search = '';
 
     public function mount(): void
@@ -63,6 +69,23 @@ class StockOpnameForm extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedMaterialId(): void
+    {
+        $material = $this->material_id ? Material::find($this->material_id) : null;
+        if ($material) {
+            $this->selectedMaterialUnit = $material->unit;
+            $this->isSemen = (strcasecmp($material->name, 'Semen') === 0 || strtoupper($material->unit) === 'TON');
+        } else {
+            $this->selectedMaterialUnit = 'Kg';
+            $this->isSemen = false;
+        }
     }
 
     public function updated(string $propertyName): void
@@ -127,12 +150,19 @@ class StockOpnameForm extends Component
         ]);
 
         $material = Material::findOrFail($this->material_id);
+        $isSemen = (strcasecmp($material->name, 'Semen') === 0 || strtoupper($material->unit) === 'TON');
 
         // Prepare dimensions payload
+        // Jika Semen, stock_bin diinput dalam satuan Ton (1 Ton = 1.000 Kg)
+        $stockBinVal = (float) ($this->stock_bin ?: 0);
+        $stockBinKg = $isSemen ? ($stockBinVal * 1000.0) : $stockBinVal;
+
         $dimensions = [
             'shape' => $this->shape_type,
             'tinggi' => (float) $this->tinggi,
-            'stock_bin' => (float) ($this->stock_bin ?: 0),
+            'stock_bin' => $stockBinKg,
+            'stock_bin_input' => $stockBinVal,
+            'stock_bin_unit' => $material->unit,
         ];
 
         if ($this->shape_type === 'limas_terpancung') {
@@ -168,6 +198,8 @@ class StockOpnameForm extends Component
         $this->ra = '';
         $this->rb = '';
         $this->stock_bin = '';
+        $this->selectedMaterialUnit = 'Kg';
+        $this->isSemen = false;
 
         // Strict: Surveyor only gets simple confirmation, no volume or kg values are returned to UI
         session()->flash('success', 'Data Opname Berhasil Disimpan & Dikirim ke Server');
@@ -190,7 +222,7 @@ class StockOpnameForm extends Component
             })
             ->latest('opname_date')
             ->latest('id')
-            ->paginate(10);
+            ->paginate($this->perPage);
 
         return view('livewire.stock-opname-form', [
             'materials' => $materials,
