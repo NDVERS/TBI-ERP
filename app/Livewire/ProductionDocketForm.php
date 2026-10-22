@@ -101,6 +101,11 @@ class ProductionDocketForm extends Component
 
     public ?string $moisture_correction_summary = null;
 
+    // Detail Modal State (Dapat diakses seluruh pengguna / RBAC)
+    public bool $showDetailModal = false;
+
+    public ?ProductionDocket $selectedDocket = null;
+
     // Edit Modal State (Khusus Admin / Master)
     public bool $showEditModal = false;
 
@@ -399,6 +404,52 @@ class ProductionDocketForm extends Component
         ];
     }
 
+    #[Computed]
+    public function dailyKpi(): array
+    {
+        $targetDate = ! empty($this->production_date) ? $this->production_date : now('Asia/Makassar')->toDateString();
+
+        $todayDockets = ProductionDocket::whereDate('production_date', $targetDate)->get();
+
+        $totalRitase = $todayDockets->count();
+        $totalVolume = (float) $todayDockets->sum('volume_m3');
+        $activeTrucks = $todayDockets->pluck('truck_no')->filter()->unique()->values()->all();
+
+        // Top Mutu Beton
+        $topMutu = $todayDockets
+            ->groupBy('mutu_code')
+            ->map(fn ($group) => [
+                'code' => $group->first()->mutu_code,
+                'count' => $group->count(),
+                'vol' => $group->sum('volume_m3'),
+            ])
+            ->sortByDesc('count')
+            ->first();
+
+        // Average Volume per Ritase
+        $avgVolume = $totalRitase > 0 ? round($totalVolume / $totalRitase, 2) : 0.0;
+
+        // Month-to-date (MTD) totals for context
+        $dateObj = Carbon::parse($targetDate);
+        $monthDockets = ProductionDocket::whereYear('production_date', $dateObj->year)
+            ->whereMonth('production_date', $dateObj->month)
+            ->selectRaw('count(*) as count, coalesce(sum(volume_m3), 0) as total_vol')
+            ->first();
+
+        return [
+            'date' => $targetDate,
+            'date_formatted' => $dateObj->translatedFormat('d M Y'),
+            'total_ritase' => $totalRitase,
+            'total_volume' => $totalVolume,
+            'active_trucks_count' => count($activeTrucks),
+            'top_mutu_code' => $topMutu['code'] ?? '-',
+            'top_mutu_count' => $topMutu['count'] ?? 0,
+            'avg_volume' => $avgVolume,
+            'mtd_volume' => (float) ($monthDockets->total_vol ?? 0),
+            'mtd_ritase' => (int) ($monthDockets->count ?? 0),
+        ];
+    }
+
     public function autoFillFromJobMix(): void
     {
         if (empty($this->mutu_code)) {
@@ -648,6 +699,18 @@ class ProductionDocketForm extends Component
         // Update jam ke waktu terkini
         $this->time_load = Carbon::now('Asia/Makassar')->format('H:i');
         $this->dispatch('form-saved');
+    }
+
+    public function openDetailModal(int $id): void
+    {
+        $this->selectedDocket = ProductionDocket::with(['salesOrder', 'creator'])->findOrFail($id);
+        $this->showDetailModal = true;
+    }
+
+    public function closeDetailModal(): void
+    {
+        $this->showDetailModal = false;
+        $this->selectedDocket = null;
     }
 
     public function openEditModal(int $id): void

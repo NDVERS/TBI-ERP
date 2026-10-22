@@ -196,6 +196,28 @@
                             </svg>
                             <span>Produksi Harian</span>
                         </a>
+
+                        {{-- Armada & Alat Berat (11 TM, Wheel Loader, BBM Solar) --}}
+                        <a
+                            href="{{ url('/fleet-management') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('fleet-management*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
+                        >
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                            </svg>
+                            <span>Armada &amp; Alat Berat</span>
+                        </a>
+
+                        {{-- Buku Konsumsi Dexlite & Pelumas (BBM Solar) --}}
+                        <a
+                            href="{{ url('/dexlite-consumption') }}"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors {{ request()->is('dexlite-consumption*') ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' }}"
+                        >
+                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 22h12M4 9h10M14 22V4a2 2 0 00-2-2H6a2 2 0 00-2 2v18M14 13h2a2 2 0 012 2v2a2 2 0 002 2 2 2 0 002-2V9.83a2 2 0 00-.59-1.42L18 5" />
+                            </svg>
+                            <span>Konsumsi Dexlite &amp; BBM</span>
+                        </a>
                     @endif
 
                     {{-- Stock Opname (Admin, Surveyor Opname, Demo) --}}

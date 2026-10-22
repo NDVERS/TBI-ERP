@@ -470,7 +470,12 @@
 
                     {{-- Material --}}
                     <td class="px-4 py-3 font-semibold text-zinc-900">
-                        {{ $opname->material->name ?? '-' }}
+                        <div>{{ $opname->material->name ?? '-' }}</div>
+                        @if (!empty($opname->dimensions_json['pile_name']) && strtolower(trim($opname->dimensions_json['pile_name'])) !== strtolower(trim($opname->material?->name ?? '')))
+                            <div class="text-[11px] font-normal text-zinc-500">
+                                Timbunan: <span class="font-medium text-zinc-700">{{ $opname->dimensions_json['pile_name'] }}</span>
+                            </div>
+                        @endif
                     </td>
 
                     {{-- Bentuk --}}
@@ -503,6 +508,14 @@
                         @else
                             <div class="text-[11px] text-zinc-500">
                                 Ra: {{ $d['ra'] ?? '-' }} m, Rb: {{ $d['rb'] ?? '-' }} m
+                            </div>
+                        @endif
+                        @if (!empty($d['stock_bin']) && (float) $d['stock_bin'] > 0)
+                            <div class="text-[11px] text-zinc-500">
+                                Bin: {{ number_format((float) $d['stock_bin'], 2, ',', '.') }} Kg
+                                @if (!empty($d['stock_bin_m3']))
+                                    <span class="text-zinc-400">({{ $d['stock_bin_m3'] }} m³)</span>
+                                @endif
                             </div>
                         @endif
                     </td>

@@ -139,8 +139,8 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Dexlite',
                 'unit' => 'Liter',
                 'density_kg_m3' => 840.00,
-                'initial_stock_kg' => 1234.50,
-                'notes' => 'BBM Solar Dexlite untuk Armada & Genset',
+                'initial_stock_kg' => 1234.85,
+                'notes' => 'BBM Solar Dexlite untuk Armada & Lain-lain',
             ],
         ];
 
@@ -897,5 +897,11 @@ class DatabaseSeeder extends Seeder
 
         // 8. Seed Riwayat Data Produksi Harian (Dari Sheet Produksi TBI - ERP.xlsx)
         $this->call(HistoricalProductionSeeder::class);
+
+        // 9. Seed Master Armada & Alat Berat (11 Unit TM + Wheel Loader + Lain-lain)
+        $this->call(FleetSeeder::class);
+
+        // 10. Seed Konsumsi Dexlite & Penerimaan BBM (Dari Sheet DEXLITE CONSUMPTION)
+        $this->call(DexliteConsumptionSeeder::class);
     }
 }

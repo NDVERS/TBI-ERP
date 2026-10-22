@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FleetDailyLog;
 use App\Models\FleetTripLog;
 use App\Models\LabConversion;
 use App\Models\Material;
@@ -123,8 +124,17 @@ class StockReconciliationService
     {
         $name = strtolower(trim($material->name));
 
-        // Untuk Dexlite, diambil dari total_fuel_liter pada fleet_trip_logs atau sales_orders
+        // Untuk Dexlite, diambil dari fuel_liters pada fleet_daily_logs, fleet_trip_logs atau sales_orders
         if (str_contains($name, 'dexlite') || str_contains($name, 'solar')) {
+            $dailyUsage = (float) FleetDailyLog::query()
+                ->whereYear('log_date', $year)
+                ->whereMonth('log_date', $month)
+                ->sum('fuel_liters');
+
+            if ($dailyUsage > 0) {
+                return $dailyUsage;
+            }
+
             $tripUsage = (float) FleetTripLog::query()
                 ->whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
@@ -205,18 +215,35 @@ class StockReconciliationService
             return null;
         }
 
+        $rawDate = $latestOpname->getRawOriginal('opname_date');
+        $sameDayOtherOpnames = StockOpname::query()
+            ->where('material_id', $material->id)
+            ->where('opname_date', $rawDate)
+            ->where('id', '!=', $latestOpname->id)
+            ->where(function ($q) {
+                $q->where('calculated_weight_kg', '>', 0)
+                    ->orWhere('calculated_volume_m3', '>', 0);
+            })
+            ->get();
+
         $name = strtolower(trim($material->name));
-        if (str_contains($name, 'dexlite') || str_contains($name, 'solar') || strtoupper($material->unit) === 'LITER') {
-            if ((float) $latestOpname->calculated_volume_m3 > 0) {
-                return round((float) $latestOpname->calculated_volume_m3 * 1000.0, 2);
+        $isFuelOrLiter = str_contains($name, 'dexlite') || str_contains($name, 'solar') || strtoupper($material->unit) === 'LITER';
+
+        if ($isFuelOrLiter) {
+            $totalVol = (float) $latestOpname->calculated_volume_m3 + (float) $sameDayOtherOpnames->sum('calculated_volume_m3');
+            if ($totalVol > 0) {
+                return round($totalVol * 1000.0, 2);
             }
 
             $density = (float) $material->density_kg_m3 ?: 840.0;
+            $totalKg = (float) $latestOpname->calculated_weight_kg + (float) $sameDayOtherOpnames->sum('calculated_weight_kg');
 
-            return round(((float) $latestOpname->calculated_weight_kg / $density) * 1000.0, 2);
+            return round(($totalKg / $density) * 1000.0, 2);
         }
 
-        return (float) $latestOpname->calculated_weight_kg;
+        $totalKg = (float) $latestOpname->calculated_weight_kg + (float) $sameDayOtherOpnames->sum('calculated_weight_kg');
+
+        return round($totalKg, 2);
     }
 
     /**

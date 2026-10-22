@@ -34,9 +34,12 @@
                 <form wire:submit.prevent="save" class="space-y-6">
                     {{-- Bagian 1: Data Identifikasi & Waktu --}}
                     <div>
-                        <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-                            1. Identitas Surat Jalan & Waktu Dispatch
-                        </h3>
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-5 h-5 rounded-full bg-zinc-900 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">1</span>
+                            <h3 class="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                                Identitas Surat Jalan & Waktu Dispatch
+                            </h3>
+                        </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {{-- Nomor Docket / Surat Jalan --}}
                             <div>
@@ -75,11 +78,14 @@
                     </div>
 
                     {{-- Bagian 2: Data Order & Armada --}}
-                    <div class="pt-2 border-t border-zinc-100">
+                    <div class="pt-5 border-t border-zinc-200">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                            <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                                2. Data Customer, Mutu Beton & Armada
-                            </h3>
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-zinc-900 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">2</span>
+                                <h3 class="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                                    Data Customer, Mutu Beton & Armada
+                                </h3>
+                            </div>
                             @if ($this->selectedSalesOrder)
                                 @php
                                     $targetVol = (float) $this->selectedSalesOrder->volume_m3;
@@ -98,7 +104,7 @@
                         </div>
 
                         {{-- Dropdown Referensi Sales Order (SO) --}}
-                        <div class="mb-4">
+                        <div class="p-3 rounded-lg border border-zinc-200/90 bg-zinc-50/50 mb-4 space-y-1.5">
                             <x-ui.select
                                 wire:model.live="sales_order_id"
                                 wire:key="select-so-{{ $docket_no }}"
@@ -118,120 +124,132 @@
                                     </option>
                                 @endforeach
                             </x-ui.select>
-                            <span class="text-[11px] text-zinc-500 mt-1 block">
+                            <span class="text-[11px] text-zinc-500 block">
                                 Memilih No. SO otomatis mengisi Nama Customer, Lokasi Proyek, Mutu Beton, dan memotong sisa kuota volume pemesanan saat docket disimpan.
                             </span>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {{-- Nama Customer --}}
-                            <div>
-                                <x-ui.select
-                                    wire:model.live="customer_id"
-                                    wire:key="select-customer-{{ $docket_no }}"
-                                    label="Nama Customer"
-                                    name="customer_id"
-                                    placeholder="-- Pilih Master Customer --"
-                                    class="uppercase"
-                                    required
-                                >
-                                    @foreach ($customers as $c)
-                                        <option value="{{ $c->id }}" wire:key="opt-cust-{{ $c->id }}">
-                                            {{ strtoupper($c->name) }}
-                                        </option>
-                                    @endforeach
-                                </x-ui.select>
-                            </div>
-
-                            {{-- Alamat Proyek (Auto-fill Reactive) --}}
-                            <div class="sm:col-span-2">
-                                <x-ui.input
-                                    wire:model="address"
-                                    label="Alamat Proyek / Lokasi Pengecoran"
-                                    name="address"
-                                    placeholder="OTOMATIS TERISI DARI CUSTOMER, DAPAT DISESUAIKAN..."
-                                    class="uppercase"
-                                />
-                            </div>
-
-                            {{-- Mutu Beton --}}
-                            <div>
-                                <x-ui.select
-                                    wire:model="mutu_code"
-                                    wire:key="select-mutu-{{ $docket_no }}"
-                                    label="Mutu Beton"
-                                    name="mutu_code"
-                                    placeholder="-- Pilih Mutu Beton --"
-                                    class="uppercase font-mono"
-                                    required
-                                >
-                                    <optgroup label="Seri K (K-Series)">
-                                        @foreach ($kSeriesMutuList as $mutu)
-                                            <option value="{{ $mutu }}" wire:key="opt-mutu-{{ \Illuminate\Support\Str::slug($mutu) }}">
-                                                {{ strtoupper($mutu) }}
+                        <div class="space-y-4">
+                            {{-- Baris 1: Customer (1 col) & Alamat (2 col) --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <x-ui.select
+                                        wire:model.live="customer_id"
+                                        wire:key="select-customer-{{ $docket_no }}"
+                                        label="Nama Customer"
+                                        name="customer_id"
+                                        placeholder="-- Pilih Master Customer --"
+                                        class="uppercase"
+                                        required
+                                    >
+                                        @foreach ($customers as $c)
+                                            <option value="{{ $c->id }}" wire:key="opt-cust-{{ $c->id }}">
+                                                {{ strtoupper($c->name) }}
                                             </option>
                                         @endforeach
-                                    </optgroup>
-                                    <optgroup label="Seri FC & FS (Megapascal & Flexural)">
-                                        @foreach ($fcFsMutuList as $mutu)
-                                            <option value="{{ $mutu }}" wire:key="opt-mutu-{{ \Illuminate\Support\Str::slug($mutu) }}">
-                                                {{ strtoupper($mutu) }}
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                </x-ui.select>
+                                    </x-ui.select>
+                                </div>
+
+                                <div class="sm:col-span-2">
+                                    <x-ui.input
+                                        wire:model="address"
+                                        label="Alamat Proyek / Lokasi Pengecoran"
+                                        name="address"
+                                        placeholder="OTOMATIS TERISI DARI CUSTOMER, DAPAT DISESUAIKAN..."
+                                        class="uppercase"
+                                    />
+                                </div>
                             </div>
 
-                            {{-- Nomor Truck Mixer (TM) --}}
-                            <x-ui.input
-                                wire:model="truck_no"
-                                label="Nomor TM (Truck Mixer)"
-                                name="truck_no"
-                                placeholder="Contoh: 01, 08"
-                                prefix="TM-"
-                                class="uppercase font-mono"
-                                mono
-                                required
-                            />
+                            {{-- Baris 2: Mutu Beton, No. TM, Volume, Status Dispatch (Simetris 4 Kolom) --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {{-- Mutu Beton --}}
+                                <div>
+                                    <x-ui.select
+                                        wire:model="mutu_code"
+                                        wire:key="select-mutu-{{ $docket_no }}"
+                                        label="Mutu Beton"
+                                        name="mutu_code"
+                                        placeholder="-- Pilih Mutu Beton --"
+                                        class="uppercase font-mono"
+                                        required
+                                    >
+                                        <optgroup label="Seri K (K-Series)">
+                                            @foreach ($kSeriesMutuList as $mutu)
+                                                <option value="{{ $mutu }}" wire:key="opt-mutu-{{ \Illuminate\Support\Str::slug($mutu) }}">
+                                                    {{ strtoupper($mutu) }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                        <optgroup label="Seri FC & FS (Megapascal & Flexural)">
+                                            @foreach ($fcFsMutuList as $mutu)
+                                                <option value="{{ $mutu }}" wire:key="opt-mutu-{{ \Illuminate\Support\Str::slug($mutu) }}">
+                                                    {{ strtoupper($mutu) }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    </x-ui.select>
+                                </div>
 
-                            {{-- Volume & Status Dispatch Armada --}}
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2">
-                                <x-ui.input
-                                    wire:model.live.debounce.250ms="volume_m3"
-                                    label="Volume (m³)"
-                                    name="volume_m3"
-                                    type="text"
-                                    placeholder="Contoh: 7.00"
-                                    suffix="m³"
-                                    mono
-                                    required
-                                />
+                                {{-- Nomor Truck Mixer (TM) --}}
+                                <div>
+                                    <x-ui.input
+                                        wire:model="truck_no"
+                                        label="Nomor TM (Truck Mixer)"
+                                        name="truck_no"
+                                        placeholder="Contoh: 01, 08"
+                                        prefix="TM-"
+                                        class="uppercase font-mono"
+                                        mono
+                                        required
+                                    />
+                                </div>
 
-                                <x-ui.select
-                                    wire:model="delivery_status"
-                                    label="Status Dispatch Armada"
-                                    name="delivery_status"
-                                    required
-                                >
-                                    <option value="completed">✅ Selesai Bongkar (Default)</option>
-                                    <option value="loading">🔄 Antri Muat (Plant)</option>
-                                    <option value="in_transit">🚚 Dalam Perjalanan</option>
-                                    <option value="on_site">🏗️ Di Lokasi Proyek</option>
-                                </x-ui.select>
+                                {{-- Volume (m³) --}}
+                                <div>
+                                    <x-ui.input
+                                        wire:model.live.debounce.250ms="volume_m3"
+                                        label="Volume Cor (m³)"
+                                        name="volume_m3"
+                                        type="text"
+                                        placeholder="Contoh: 7.00"
+                                        suffix="m³"
+                                        mono
+                                        required
+                                    />
+                                </div>
+
+                                {{-- Status Dispatch Armada --}}
+                                <div>
+                                    <x-ui.select
+                                        wire:model="delivery_status"
+                                        label="Status Dispatch Armada"
+                                        name="delivery_status"
+                                        required
+                                    >
+                                        <option value="completed">✅ Selesai Bongkar</option>
+                                        <option value="loading">🔄 Antri Muat (Plant)</option>
+                                        <option value="in_transit">🚚 Dalam Perjalanan</option>
+                                        <option value="on_site">🏗️ Di Lokasi Proyek</option>
+                                    </x-ui.select>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- Bagian 3: Komposisi Batching Aktual --}}
-                    <div class="pt-2 border-t border-zinc-100">
+                    <div class="pt-5 border-t border-zinc-200">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                            <div>
-                                <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                                    3. Komposisi Batching Aktual
-                                </h3>
-                                <p class="text-[11px] text-zinc-500 font-mono">
-                                    Otomatis memotong Stok Akhir Teoritis
-                                </p>
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-zinc-900 text-white font-mono text-[10px] font-bold flex items-center justify-center shrink-0">3</span>
+                                <div>
+                                    <h3 class="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                                        Komposisi Penimbangan Batching Aktual
+                                    </h3>
+                                    <p class="text-[11px] text-zinc-500 font-mono">
+                                        Otomatis memotong stok teoritis plant sesuai timbangan riil
+                                    </p>
+                                </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <button
@@ -333,8 +351,9 @@
                             </div>
                         @endif
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-lg bg-zinc-50 border border-zinc-200">
-                            {{-- Semen --}}
+                        {{-- Grid 4 Kolom x 2 Baris: 7 Input Material + 1 Slot Card Ringkasan Densitas Simetris --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 p-4 rounded-xl bg-zinc-50/80 border border-zinc-200">
+                            {{-- 1. Semen --}}
                             <x-ui.input
                                 wire:model.live.debounce.250ms="silo1_act"
                                 label="Semen Aktual"
@@ -346,7 +365,7 @@
                                 required
                             />
 
-                            {{-- Pasir Palu --}}
+                            {{-- 2. Pasir Palu --}}
                             <x-ui.input
                                 wire:model.live.debounce.250ms="pasir_palu_act"
                                 label="Pasir Palu Aktual"
@@ -358,7 +377,7 @@
                                 required
                             />
 
-                            {{-- Pasir Lokal --}}
+                            {{-- 3. Pasir Lokal --}}
                             <x-ui.input
                                 wire:model.live.debounce.250ms="pasir_lokal_act"
                                 label="Pasir Lokal Aktual"
@@ -370,34 +389,10 @@
                                 required
                             />
 
-                            {{-- Batu 1/2 --}}
-                            <x-ui.input
-                                wire:model.live.debounce.250ms="split_1_2_act"
-                                label="Batu 1/2 Aktual"
-                                name="split_1_2_act"
-                                type="text"
-                                placeholder="0.00"
-                                suffix="kg"
-                                mono
-                                required
-                            />
-
-                            {{-- Batu 2/3 --}}
-                            <x-ui.input
-                                wire:model.live.debounce.250ms="split_2_3_act"
-                                label="Batu 2/3 Aktual"
-                                name="split_2_3_act"
-                                type="text"
-                                placeholder="0.00"
-                                suffix="kg"
-                                mono
-                                required
-                            />
-
-                            {{-- Air --}}
+                            {{-- 4. Air --}}
                             <x-ui.input
                                 wire:model.live.debounce.250ms="water_act"
-                                label="Air Aktual"
+                                label="Air Bersih Aktual"
                                 name="water_act"
                                 type="text"
                                 placeholder="0.00"
@@ -406,7 +401,31 @@
                                 required
                             />
 
-                            {{-- SBTJM2 (Admixture) --}}
+                            {{-- 5. Batu 1/2 --}}
+                            <x-ui.input
+                                wire:model.live.debounce.250ms="split_1_2_act"
+                                label="Batu Split 1/2 Aktual"
+                                name="split_1_2_act"
+                                type="text"
+                                placeholder="0.00"
+                                suffix="kg"
+                                mono
+                                required
+                            />
+
+                            {{-- 6. Batu 2/3 --}}
+                            <x-ui.input
+                                wire:model.live.debounce.250ms="split_2_3_act"
+                                label="Batu Split 2/3 Aktual"
+                                name="split_2_3_act"
+                                type="text"
+                                placeholder="0.00"
+                                suffix="kg"
+                                mono
+                                required
+                            />
+
+                            {{-- 7. SBTJM2 (Admixture) --}}
                             <x-ui.input
                                 wire:model.live.debounce.250ms="admixture_act"
                                 label="SBTJM2 (Admixture)"
@@ -417,51 +436,46 @@
                                 mono
                                 required
                             />
-                        </div>
 
-                        {{-- Ringkasan Instan Timbangan & Densitas Beton --}}
-                        <div class="mt-3 p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                            <div>
-                                <div class="font-medium text-zinc-700 flex items-center gap-1.5">
-                                    <svg class="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span>Ringkasan Batching Aktual</span>
+                            {{-- 8. Real-Time Mini Metrics Card (Menutup Slot ke-8 secara Sempurna & Fungsional) --}}
+                            <div class="flex flex-col justify-between p-3 rounded-lg border border-zinc-200 bg-white shadow-2xs min-h-18">
+                                <div class="flex items-center justify-between pb-1.5 border-b border-zinc-100">
+                                    <span class="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-tight">Kalkulasi Batch</span>
+                                    @if ($this->totalBatchWeight > 0 && $this->batchDensity >= 2200 && $this->batchDensity <= 2550)
+                                        <x-ui.badge variant="emerald" size="sm" dot>Normal</x-ui.badge>
+                                    @elseif ($this->totalBatchWeight > 0)
+                                        <x-ui.badge variant="amber" size="sm" dot>Cek Timbangan</x-ui.badge>
+                                    @else
+                                        <x-ui.badge variant="zinc" size="sm">Siap</x-ui.badge>
+                                    @endif
                                 </div>
-                                <div class="font-mono text-zinc-500 text-[11px] mt-0.5">
-                                    Total Berat: <strong class="text-zinc-900">{{ number_format($this->totalBatchWeight, 0, ',', '.') }} kg</strong>
-                                    ({{ number_format($this->totalBatchWeight / 1000, 2, ',', '.') }} Ton)
-                                </div>
-                            </div>
 
-                            <div class="flex items-center gap-3">
-                                <div class="text-right">
-                                    <div class="text-[11px] text-zinc-400 font-mono">Densitas Campuran:</div>
-                                    <div class="font-mono font-bold text-sm text-zinc-900">
-                                        {{ number_format($this->batchDensity, 1, ',', '.') }} <span class="text-[10px] font-normal text-zinc-500">kg/m³</span>
+                                <div class="grid grid-cols-2 gap-2 my-1 text-center font-mono">
+                                    <div class="p-1 rounded bg-zinc-50 border border-zinc-100">
+                                        <div class="text-[10px] text-zinc-400">Total Berat</div>
+                                        <div class="font-bold text-zinc-900 text-xs tabular-nums">{{ number_format($this->totalBatchWeight, 0, ',', '.') }} <span class="text-[9px] font-normal text-zinc-500">kg</span></div>
+                                    </div>
+                                    <div class="p-1 rounded bg-zinc-50 border border-zinc-100">
+                                        <div class="text-[10px] text-zinc-400">Densitas</div>
+                                        <div class="font-bold text-zinc-900 text-xs tabular-nums">{{ number_format($this->batchDensity, 1, ',', '.') }} <span class="text-[9px] font-normal text-zinc-500">kg/m³</span></div>
                                     </div>
                                 </div>
-                                @if ($this->totalBatchWeight > 0 && $this->batchDensity >= 2200 && $this->batchDensity <= 2550)
-                                    <x-ui.badge variant="emerald" size="sm" dot>
-                                        Densitas Normal
-                                    </x-ui.badge>
-                                @elseif ($this->totalBatchWeight > 0)
-                                    <x-ui.badge variant="amber" size="sm" dot>
-                                        Periksa Timbangan
-                                    </x-ui.badge>
-                                @else
-                                    <x-ui.badge variant="zinc" size="sm">
-                                        Siap Input
-                                    </x-ui.badge>
-                                @endif
+
+                                <div class="text-[10px] text-zinc-400 font-mono flex items-center justify-between pt-1 border-t border-zinc-100">
+                                    <span>Konversi Tonase:</span>
+                                    <span class="font-bold text-zinc-700">{{ number_format($this->totalBatchWeight / 1000, 2, ',', '.') }} Ton</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- Form Actions --}}
-                    <div class="flex items-center justify-between gap-3 pt-4 border-t border-zinc-200">
-                        <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-5 border-t border-zinc-200">
+                        <div class="flex items-center gap-2">
                             <x-ui.unsaved-changes-guard />
+                            <span class="text-[11px] text-zinc-500 hidden sm:inline">
+                                Pastikan takaran aktual sesuai nota timbangan plant sebelum menerbitkan tiket.
+                            </span>
                         </div>
 
                         <div class="flex items-center gap-3">
@@ -477,6 +491,7 @@
                                 type="submit"
                                 variant="primary"
                                 wire:loading.attr="disabled"
+                                class="px-5 py-2 text-sm font-semibold shadow-xs"
                             >
                                 <span wire:loading.remove>Simpan & Terbitkan Docket</span>
                                 <span wire:loading>Memproses...</span>
@@ -492,7 +507,7 @@
             <div class="sticky top-6 space-y-4">
                 <x-ui.card
                     title="Stok Akhir Teoritis"
-                    description="Ketersediaan material aktual terkini. Berkurang otomatis saat tiket disubmit."
+                    description="Ketersediaan material terkini di plant. Berkurang otomatis saat tiket disimpan."
                 >
                     <x-slot:action>
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -504,13 +519,21 @@
                     <div class="divide-y divide-zinc-100">
                         @foreach ($stockSummaries as $mStock)
                             @php
-                                $isLowStock = (float) $mStock['stok_teoritis'] < 50000;
+                                $stok = (float) $mStock['stok_teoritis'];
+                                $unit = strtolower($mStock['unit'] ?? 'kg');
+                                $isDeficit = $stok < 0;
+                                // Ambang batas realistis per jenis satuan: liter (BBM/Kimia) vs kg (semen/agregat)
+                                $isLowStock = ! $isDeficit && ($unit === 'liter' ? $stok < 1000 : $stok < 50000);
                             @endphp
                             <div class="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
                                 <div>
                                     <div class="flex items-center gap-1.5 font-semibold text-zinc-900">
                                         <span>{{ $mStock['material_name'] }}</span>
-                                        @if ($isLowStock)
+                                        @if ($isDeficit)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-50 text-red-700 border border-red-200">
+                                                ⚠️ Defisit
+                                            </span>
+                                        @elseif ($isLowStock)
                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-300">
                                                 ⚠️ Menipis
                                             </span>
@@ -521,13 +544,86 @@
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-bold font-mono tabular-nums text-sm {{ $mStock['stok_teoritis'] > 50000 ? 'text-zinc-900' : 'text-amber-600' }}">
-                                        {{ number_format($mStock['stok_teoritis'], 2, ',', '.') }}
+                                    <div class="font-bold font-mono tabular-nums text-sm {{ $isDeficit ? 'text-red-600' : ($isLowStock ? 'text-amber-600' : 'text-zinc-900') }}">
+                                        {{ number_format($stok, 2, ',', '.') }}
                                     </div>
                                     <span class="text-[10px] text-zinc-500 font-mono">{{ $mStock['unit'] }}</span>
                                 </div>
                             </div>
                         @endforeach
+                    </div>
+                </x-ui.card>
+
+                {{-- Widget Ringkasan KPI Produksi Hari Ini --}}
+                @php
+                    $kpi = $this->dailyKpi;
+                @endphp
+                <x-ui.card
+                    title="Ringkasan Produksi Hari Ini"
+                    description="{{ $kpi['date_formatted'] }} (Shift Berjalan)"
+                >
+                    <x-slot:action>
+                        <x-ui.badge variant="zinc" size="sm" class="font-mono">
+                            {{ $kpi['total_ritase'] }} Ritase
+                        </x-ui.badge>
+                    </x-slot:action>
+
+                    <div class="space-y-3.5">
+                        {{-- 2 Metrik Utama --}}
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="p-3 rounded-lg bg-zinc-50 border border-zinc-200/80">
+                                <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-tight block">
+                                    Volume Cor
+                                </span>
+                                <div class="mt-1 flex items-baseline gap-1">
+                                    <span class="text-xl font-bold font-mono tracking-tight text-zinc-900 tabular-nums">
+                                        {{ number_format($kpi['total_volume'], 1, ',', '.') }}
+                                    </span>
+                                    <span class="text-xs font-mono text-zinc-500">m³</span>
+                                </div>
+                                <span class="text-[10px] text-zinc-400 font-mono mt-0.5 block">
+                                    ~{{ number_format($kpi['avg_volume'], 1, ',', '.') }} m³/rit
+                                </span>
+                            </div>
+
+                            <div class="p-3 rounded-lg bg-zinc-50 border border-zinc-200/80">
+                                <span class="text-[11px] font-medium text-zinc-500 uppercase tracking-tight block">
+                                    Armada TM
+                                </span>
+                                <div class="mt-1 flex items-baseline gap-1">
+                                    <span class="text-xl font-bold font-mono tracking-tight text-zinc-900 tabular-nums">
+                                        {{ $kpi['active_trucks_count'] }}
+                                    </span>
+                                    <span class="text-xs font-mono text-zinc-500">Unit</span>
+                                </div>
+                                <span class="text-[10px] text-zinc-400 font-mono mt-0.5 block">
+                                    Beroperasi aktif
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Rincian Tambahan --}}
+                        <div class="space-y-2 pt-2 border-t border-zinc-100 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-500">Mutu Terbanyak:</span>
+                                @if ($kpi['top_mutu_code'] !== '-')
+                                    <span class="font-mono font-semibold text-zinc-900">
+                                        {{ $kpi['top_mutu_code'] }}
+                                        <span class="text-zinc-400 font-normal">({{ $kpi['top_mutu_count'] }} rit)</span>
+                                    </span>
+                                @else
+                                    <span class="text-zinc-400 font-mono">-</span>
+                                @endif
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-500">Akumulasi Bulan Ini:</span>
+                                <span class="font-mono font-bold text-zinc-900">
+                                    {{ number_format($kpi['mtd_volume'], 1, ',', '.') }} m³
+                                    <span class="text-zinc-400 font-normal">({{ $kpi['mtd_ritase'] }} rit)</span>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </x-ui.card>
             </div>
@@ -540,168 +636,187 @@
         description="Daftar tiket pengiriman beton ready mix yang telah diterbitkan pada plant."
     >
         <x-slot:action>
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                {{-- Quick Date Range Presets --}}
-                <div class="inline-flex rounded-md border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
-                    <button
-                        type="button"
-                        wire:click="setDateRange('all')"
-                        class="px-2 py-1 rounded transition-all {{ $filterDateRange === 'all' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
-                    >
-                        Semua
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="setDateRange('today')"
-                        class="px-2 py-1 rounded transition-all {{ $filterDateRange === 'today' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
-                    >
-                        Hari Ini
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="setDateRange('yesterday')"
-                        class="px-2 py-1 rounded transition-all {{ $filterDateRange === 'yesterday' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
-                    >
-                        Kemarin
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="setDateRange('this_week')"
-                        class="px-2 py-1 rounded transition-all {{ $filterDateRange === 'this_week' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
-                    >
-                        Minggu Ini
-                    </button>
-                    <button
-                        type="button"
-                        wire:click="setDateRange('this_month')"
-                        class="px-2 py-1 rounded transition-all {{ $filterDateRange === 'this_month' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
-                    >
-                        Bulan Ini
-                    </button>
-                </div>
-
-                <div class="w-full sm:w-52">
-                    <x-ui.input
-                        wire:model.live.debounce.300ms="search"
-                        placeholder="Cari docket, customer, TM..."
-                        prefix="🔍"
-                        size="sm"
-                    />
-                </div>
-
-                <x-ui.table-density-toggle />
-
+            <div class="flex items-center gap-2">
                 <a
                     href="{{ route('production-dockets.report-excel', ['month' => now()->month, 'year' => now()->year]) }}"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
                     title="Export Rekap Bulanan Produksi ke Excel"
                 >
                     <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span>Excel</span>
+                    <span>Ekspor Excel</span>
                 </a>
 
                 <a
                     href="{{ route('production-dockets.report-pdf', ['month' => now()->month, 'year' => now()->year]) }}"
                     target="_blank"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-2xs transition-colors"
                     title="Cetak Rekap Bulanan Produksi (PDF)"
                 >
                     <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    <span>PDF</span>
+                    <span>Cetak PDF</span>
                 </a>
             </div>
         </x-slot:action>
 
-        {{-- Mini Board Status Ritase Mixer (Dispatch Kanban / Status Pills) --}}
+        {{-- Toolbar Status Ritase Kanban & Pencarian/Periode --}}
         @php
             $counts = $this->deliveryStatusCounts;
         @endphp
-        <div class="mb-4 flex flex-wrap items-center gap-2">
-            <button
-                type="button"
-                wire:click="setFilterDeliveryStatus('all')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs' : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50' }}"
-            >
-                <span>Semua Ritase</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-700 text-white' : 'bg-zinc-100 text-zinc-700' }}">{{ $counts['all'] }}</span>
-            </button>
+        <div class="mb-4 space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    wire:click="setFilterDeliveryStatus('all')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs' : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50' }}"
+                >
+                    <span>Semua Ritase</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-700 text-white' : 'bg-zinc-100 text-zinc-700' }}">{{ $counts['all'] }}</span>
+                </button>
 
-            <button
-                type="button"
-                wire:click="setFilterDeliveryStatus('loading')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-amber-50/70 text-amber-900 border-amber-200 hover:bg-amber-100/70' }}"
-            >
-                <span>🔄 Antri Muat (Plant)</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900' }}">{{ $counts['loading'] }}</span>
-            </button>
+                <button
+                    type="button"
+                    wire:click="setFilterDeliveryStatus('loading')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-amber-50/70 text-amber-900 border-amber-200 hover:bg-amber-100/70' }}"
+                >
+                    <span>🔄 Antri Muat (Plant)</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900' }}">{{ $counts['loading'] }}</span>
+                </button>
 
-            <button
-                type="button"
-                wire:click="setFilterDeliveryStatus('in_transit')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-blue-50/70 text-blue-900 border-blue-200 hover:bg-blue-100/70' }}"
-            >
-                <span>🚚 Dalam Perjalanan</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-800 text-white' : 'bg-blue-200 text-blue-900' }}">{{ $counts['in_transit'] }}</span>
-            </button>
+                <button
+                    type="button"
+                    wire:click="setFilterDeliveryStatus('in_transit')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-blue-50/70 text-blue-900 border-blue-200 hover:bg-blue-100/70' }}"
+                >
+                    <span>🚚 Dalam Perjalanan</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-800 text-white' : 'bg-blue-200 text-blue-900' }}">{{ $counts['in_transit'] }}</span>
+                </button>
 
-            <button
-                type="button"
-                wire:click="setFilterDeliveryStatus('on_site')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-purple-50/70 text-purple-900 border-purple-200 hover:bg-purple-100/70' }}"
-            >
-                <span>🏗️ Di Lokasi Proyek</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-800 text-white' : 'bg-purple-200 text-purple-900' }}">{{ $counts['on_site'] }}</span>
-            </button>
+                <button
+                    type="button"
+                    wire:click="setFilterDeliveryStatus('on_site')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-purple-50/70 text-purple-900 border-purple-200 hover:bg-purple-100/70' }}"
+                >
+                    <span>🏗️ Di Lokasi Proyek</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-800 text-white' : 'bg-purple-200 text-purple-900' }}">{{ $counts['on_site'] }}</span>
+                </button>
 
-            <button
-                type="button"
-                wire:click="setFilterDeliveryStatus('completed')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200 hover:bg-emerald-100/70' }}"
-            >
-                <span>✅ Selesai Bongkar</span>
-                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-800 text-white' : 'bg-emerald-200 text-emerald-900' }}">{{ $counts['completed'] }}</span>
-            </button>
+                <button
+                    type="button"
+                    wire:click="setFilterDeliveryStatus('completed')"
+                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200 hover:bg-emerald-100/70' }}"
+                >
+                    <span>✅ Selesai Bongkar</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-800 text-white' : 'bg-emerald-200 text-emerald-900' }}">{{ $counts['completed'] }}</span>
+                </button>
+            </div>
+
+            {{-- Toolbar Pencarian & Filter Periode --}}
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-zinc-100">
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- Quick Date Range Presets --}}
+                    <div class="inline-flex rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 text-xs font-medium">
+                        <button
+                            type="button"
+                            wire:click="setDateRange('all')"
+                            class="px-2.5 py-1 rounded-md transition-all cursor-pointer {{ $filterDateRange === 'all' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                        >
+                            Semua
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="setDateRange('today')"
+                            class="px-2.5 py-1 rounded-md transition-all cursor-pointer {{ $filterDateRange === 'today' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                        >
+                            Hari Ini
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="setDateRange('yesterday')"
+                            class="px-2.5 py-1 rounded-md transition-all cursor-pointer {{ $filterDateRange === 'yesterday' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                        >
+                            Kemarin
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="setDateRange('this_week')"
+                            class="px-2.5 py-1 rounded-md transition-all cursor-pointer {{ $filterDateRange === 'this_week' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                        >
+                            Minggu Ini
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="setDateRange('this_month')"
+                            class="px-2.5 py-1 rounded-md transition-all cursor-pointer {{ $filterDateRange === 'this_month' ? 'bg-white font-bold text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900' }}"
+                        >
+                            Bulan Ini
+                        </button>
+                    </div>
+
+                    <x-ui.table-density-toggle />
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <x-ui.input
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Cari no. docket, customer, TM..."
+                        prefix="🔍"
+                        size="sm"
+                    />
+                </div>
+            </div>
         </div>
+
 
         @php
             $headers = [
-                ['label' => 'No', 'class' => 'w-12 text-center'],
-                ['label' => 'No. Docket', 'class' => ''],
-                ['label' => 'Waktu', 'class' => 'hidden sm:table-cell'],
+                ['label' => 'No', 'class' => 'w-14 text-center first:pl-3 first:pr-3 whitespace-nowrap'],
+                ['label' => 'No. Docket', 'class' => 'whitespace-nowrap'],
+                ['label' => 'Waktu', 'class' => 'whitespace-nowrap hidden sm:table-cell'],
                 ['label' => 'Customer & Proyek', 'class' => ''],
-                ['label' => 'Mutu Beton', 'class' => ''],
-                ['label' => 'No. TM', 'class' => ''],
-                ['label' => 'Vol (m³)', 'class' => 'text-right'],
-                ['label' => 'Kumulatif (m³)', 'class' => 'text-right hidden md:table-cell'],
+                ['label' => 'Mutu Beton', 'class' => 'whitespace-nowrap'],
+                ['label' => 'No. TM', 'class' => 'whitespace-nowrap'],
+                ['label' => 'Vol (m³)', 'class' => 'text-right whitespace-nowrap'],
+                ['label' => 'Kumulatif (m³)', 'class' => 'text-right whitespace-nowrap hidden md:table-cell'],
                 ['label' => 'Status Ritase', 'class' => 'whitespace-nowrap'],
-                ['label' => 'Operator', 'class' => 'hidden lg:table-cell'],
-                ['label' => 'Aksi', 'class' => 'text-right'],
+                ['label' => 'Operator', 'class' => 'hidden lg:table-cell whitespace-nowrap'],
+                ['label' => 'Aksi', 'class' => 'text-right whitespace-nowrap'],
             ];
         @endphp
 
         <x-ui.table :headers="$headers">
             @forelse ($dockets as $index => $d)
                 <tr class="hover:bg-zinc-50/80 transition-colors">
-                    {{-- No --}}
-                    <td class="px-4 py-3 text-center text-xs text-zinc-500 font-mono tabular-nums">
-                        {{ $dockets->firstItem() + $index }}
-                    </td>
-
-                    {{-- No Docket --}}
-                    <td class="px-4 py-3 font-mono font-bold text-zinc-900 text-xs">
-                        <span class="px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200">
-                            {{ $d->docket_no }}
+                    {{-- No Urut --}}
+                    <td class="px-2 py-3 text-center first:pl-3 first:pr-3 whitespace-nowrap">
+                        <span class="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-xs font-semibold tabular-nums">
+                            {{ $dockets->firstItem() + $index }}
                         </span>
                     </td>
 
+                    {{-- No Docket (Klik untuk Melihat Rincian Material & Dokumen) --}}
+                    <td class="px-4 py-3 font-mono font-bold text-zinc-900 text-xs whitespace-nowrap">
+                        <button
+                            type="button"
+                            wire:click="openDetailModal({{ $d->id }})"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-100 hover:bg-zinc-900 hover:text-white border border-zinc-200 text-zinc-900 font-mono font-bold text-xs transition-all cursor-pointer group shadow-2xs"
+                            title="Klik untuk melihat Rincian & Timbangan Material Aktual"
+                        >
+                            <span>{{ $d->docket_no }}</span>
+                            <svg class="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </td>
+
                     {{-- Waktu --}}
-                    <td class="px-4 py-3 text-xs font-mono tabular-nums text-zinc-600 hidden sm:table-cell">
+                    <td class="px-4 py-3 text-xs font-mono tabular-nums text-zinc-600 hidden sm:table-cell whitespace-nowrap">
                         <div>{{ $d->production_date ? \Carbon\Carbon::parse($d->production_date)->format('d/m/Y') : '-' }}</div>
-                        <div class="text-[11px] text-zinc-400">{{ substr($d->time_load, 0, 5) }} WITA</div>
+                        <div class="text-[11px] text-zinc-400 font-mono">{{ substr($d->time_load, 0, 5) }} WITA</div>
                     </td>
 
                     {{-- Customer & Proyek --}}
@@ -718,19 +833,21 @@
                     </td>
 
                     {{-- Mutu Beton --}}
-                    <td class="px-4 py-3 text-xs font-mono font-semibold text-zinc-800">
-                        {{ $d->mutu_code }}
+                    <td class="px-4 py-3 text-xs font-mono whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 font-bold text-zinc-800">
+                            {{ $d->mutu_code }}
+                        </span>
                     </td>
 
-                    {{-- TM --}}
-                    <td class="px-4 py-3 text-xs font-mono text-zinc-700">
-                        <span class="px-1.5 py-0.5 rounded bg-zinc-50 border border-zinc-200">
+                    {{-- No. TM (Truck Mixer) --}}
+                    <td class="px-4 py-3 text-xs font-mono text-zinc-700 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-50 border border-zinc-200 font-bold text-zinc-800 whitespace-nowrap">
                             {{ $d->truck_no }}
                         </span>
                     </td>
 
                     {{-- Volume --}}
-                    <td class="px-4 py-3 text-xs font-mono font-bold tabular-nums text-right text-zinc-900">
+                    <td class="px-4 py-3 text-xs font-mono font-bold tabular-nums text-right text-zinc-900 whitespace-nowrap">
                         {{ number_format((float) $d->volume_m3, 2, ',', '.') }}
                     </td>
 
@@ -807,11 +924,25 @@
                                 . "Operator Plant: " . ($d->creator?->name ?? 'TBI Operator');
                         @endphp
                         <div class="inline-flex items-center gap-1.5 justify-end">
+                            {{-- Tombol Rincian (Dapat Diakses Seluruh Role) --}}
+                            <button
+                                type="button"
+                                wire:click="openDetailModal({{ $d->id }})"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
+                                title="Lihat Rincian Timbangan & Dokumen Surat Jalan"
+                            >
+                                <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>Rincian</span>
+                            </button>
+
                             @if (auth()->user()?->role === 'admin')
                                 <button
                                     type="button"
                                     wire:click="openEditModal({{ $d->id }})"
-                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-2xs"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
                                     title="Edit Data Surat Jalan (Khusus Admin Master)"
                                 >
                                     <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1071,6 +1202,224 @@
                         </x-ui.button>
                     </div>
                 </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal Rincian Surat Jalan & Penimbangan Batching Aktual --}}
+    @if ($showDetailModal && $selectedDocket)
+        <div
+            @keydown.escape.window="$wire.closeDetailModal()"
+            wire:click.self="closeDetailModal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-xs"
+        >
+            <div
+                class="w-full max-w-2xl max-h-[92vh] flex flex-col rounded-xl border border-zinc-200 bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            >
+                {{-- Modal Header --}}
+                <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-100 bg-zinc-50/80 shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-zinc-900 text-white shadow-2xs">
+                            {{ $selectedDocket->docket_no }}
+                        </span>
+                        <div>
+                            <h3 class="text-sm font-bold text-zinc-900">
+                                Rincian Surat Jalan & Timbangan Aktual
+                            </h3>
+                            <p class="text-[11px] text-zinc-500 font-mono">
+                                Produksi: {{ $selectedDocket->production_date ? \Carbon\Carbon::parse($selectedDocket->production_date)->translatedFormat('d F Y') : '-' }} • {{ substr($selectedDocket->time_load, 0, 5) }} WITA
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="closeDetailModal"
+                        class="p-1 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/70 transition-colors cursor-pointer"
+                        title="Tutup Modal"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Modal Body (Scrollable) --}}
+                <div class="p-5 overflow-y-auto space-y-4 text-xs">
+                    {{-- 1. Info Pengiriman & Proyek --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50/60 font-mono">
+                        <div>
+                            <span class="text-[10px] text-zinc-500 block uppercase">Customer</span>
+                            <span class="font-bold text-zinc-900 text-xs font-sans">{{ $selectedDocket->customer_name }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-zinc-500 block uppercase">Mutu Beton</span>
+                            <span class="font-bold text-zinc-900 text-xs">{{ $selectedDocket->mutu_code }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-zinc-500 block uppercase">Volume Cor</span>
+                            <span class="font-bold text-emerald-700 text-sm">{{ number_format((float) $selectedDocket->volume_m3, 2, ',', '.') }} m³</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-zinc-500 block uppercase">Truk Mixer</span>
+                            <span class="font-bold text-zinc-900 text-xs">{{ $selectedDocket->truck_no }}</span>
+                        </div>
+                    </div>
+
+                    @if ($selectedDocket->address)
+                        <div class="px-3 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-700">
+                            <span class="text-[10px] font-mono text-zinc-400 block uppercase">Lokasi / Alamat Pengecoran:</span>
+                            <span class="text-xs font-medium">{{ $selectedDocket->address }}</span>
+                        </div>
+                    @endif
+
+                    {{-- 2. Rincian Penimbangan Material Batching --}}
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-xs font-bold text-zinc-900 uppercase tracking-tight flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <span>Realisasi Penimbangan Material Aktual</span>
+                            </h4>
+                            <span class="text-[10px] font-mono text-zinc-500">Timbangan Plant</span>
+                        </div>
+
+                        @php
+                            $semenTotal = (float) $selectedDocket->silo1_act + (float) $selectedDocket->silo2_act;
+                            $pasirPalu = (float) $selectedDocket->pasir_palu_act;
+                            $pasirLokal = (float) $selectedDocket->pasir_lokal_act;
+                            $split12 = (float) $selectedDocket->split_1_2_act;
+                            $split23 = (float) $selectedDocket->split_2_3_act;
+                            $air = (float) $selectedDocket->water_act;
+                            $admixture = (float) $selectedDocket->admixture_act;
+
+                            $totalWeightKg = $semenTotal + $pasirPalu + $pasirLokal + $split12 + $split23 + $air + $admixture;
+                            $vol = (float) $selectedDocket->volume_m3 > 0 ? (float) $selectedDocket->volume_m3 : 1;
+                            $density = $totalWeightKg / $vol;
+                        @endphp
+
+                        <div class="rounded-lg border border-zinc-200 overflow-hidden shadow-2xs">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="bg-zinc-100 text-zinc-700 font-mono text-[11px] border-b border-zinc-200">
+                                        <th class="px-3 py-2 text-left">Komponen Material</th>
+                                        <th class="px-3 py-2 text-right">Berat / Volume Aktual</th>
+                                        <th class="px-3 py-2 text-center">Satuan</th>
+                                        <th class="px-3 py-2 text-right">Proporsi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-zinc-200 bg-white font-mono">
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Semen Portland / OPC</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($semenTotal, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($semenTotal / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Pasir Palu (Agregat Halus)</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($pasirPalu, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($pasirPalu / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Pasir Lokal</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($pasirLokal, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($pasirLokal / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Batu Split 1/2 (Batu Kecil)</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($split12, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($split12 / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Batu Split 2/3 (Batu Besar)</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($split23, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($split23 / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Air Bersih (Water)</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($air, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Liter</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($air / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2 font-sans font-semibold text-zinc-900">Additive Kimia (SBTJM2)</td>
+                                        <td class="px-3 py-2 text-right font-bold text-zinc-900">{{ number_format($admixture, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-500">Liter</td>
+                                        <td class="px-3 py-2 text-right text-zinc-500">{{ $totalWeightKg > 0 ? number_format($admixture / $totalWeightKg * 100, 1) : 0 }}%</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-zinc-100/80 font-bold border-t border-zinc-300">
+                                        <td class="px-3 py-2 font-sans text-zinc-900">TOTAL TIMBANGAN CAMPURAN</td>
+                                        <td class="px-3 py-2 text-right text-zinc-900">{{ number_format($totalWeightKg, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-zinc-600">Kg</td>
+                                        <td class="px-3 py-2 text-right text-zinc-600">100%</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- 3. Card Densitas & Status Ritase --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50/70 font-mono">
+                        <div class="flex items-center justify-between">
+                            <span class="text-zinc-500 text-xs font-sans">Densitas Campuran:</span>
+                            <span class="font-bold text-zinc-900 text-xs">{{ number_format($density, 1, ',', '.') }} kg/m³</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-zinc-500 text-xs font-sans">Status Pengiriman:</span>
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold
+                                {{ $selectedDocket->delivery_status === 'loading' ? 'bg-amber-100 text-amber-800' : '' }}
+                                {{ $selectedDocket->delivery_status === 'in_transit' ? 'bg-blue-100 text-blue-800' : '' }}
+                                {{ $selectedDocket->delivery_status === 'on_site' ? 'bg-purple-100 text-purple-800' : '' }}
+                                {{ $selectedDocket->delivery_status === 'completed' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                            ">
+                                {{ $selectedDocket->delivery_status_info['icon'] }} {{ $selectedDocket->delivery_status_info['label'] }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Modal Footer --}}
+                <div class="flex items-center justify-between px-5 py-3 border-t border-zinc-100 bg-zinc-50 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <a
+                            href="{{ route('production-dockets.pdf', $selectedDocket) }}"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-800 text-xs font-semibold shadow-2xs transition-colors"
+                        >
+                            <svg class="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span>Cetak PDF Surat Jalan</span>
+                        </a>
+
+                        @php
+                            $modalWaText = "*SURAT JALAN BETON COR - TBI ERP*\n"
+                                . "No. Docket: {$selectedDocket->docket_no}\n"
+                                . "Tanggal: " . ($selectedDocket->production_date ? \Carbon\Carbon::parse($selectedDocket->production_date)->format('d/m/Y') : '-') . "\n"
+                                . "Customer: {$selectedDocket->customer_name}\n"
+                                . "Mutu Beton: {$selectedDocket->mutu_code}\n"
+                                . "Volume: " . number_format((float) $selectedDocket->volume_m3, 2, ',', '.') . " m³\n"
+                                . "TM: {$selectedDocket->truck_no}\n"
+                                . "Total Timbangan: " . number_format($totalWeightKg, 0, ',', '.') . " kg";
+                        @endphp
+                        <x-ui.whatsapp-button :message="$modalWaText" label="Kirim WA" />
+                    </div>
+
+                    <x-ui.button
+                        type="button"
+                        variant="secondary"
+                        wire:click="closeDetailModal"
+                    >
+                        Tutup
+                    </x-ui.button>
+                </div>
             </div>
         </div>
     @endif

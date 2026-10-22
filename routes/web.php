@@ -6,7 +6,9 @@ use App\Http\Controllers\MaterialReceivePrintController;
 use App\Http\Controllers\ProductionDocketPrintController;
 use App\Http\Controllers\PurchaseOrderPrintController;
 use App\Livewire\ActivityLogViewer;
+use App\Livewire\DexliteConsumption;
 use App\Livewire\ExecutiveDashboard;
+use App\Livewire\FleetManagement;
 use App\Livewire\MasterJobMixIndex;
 use App\Livewire\MaterialReceiveForm;
 use App\Livewire\ProductionDocketForm;
@@ -157,4 +159,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/master-job-mix', MasterJobMixIndex::class)
         ->middleware('role:admin')
         ->name('master-job-mix');
+
+    // Manajemen Armada & Alat Berat (11 Unit TM + Wheel Loader + BBM Solar)
+    Route::get('/fleet-management', FleetManagement::class)
+        ->middleware('role:admin,operator_produksi,petugas_gudang,demo')
+        ->name('fleet.index');
+
+    // Buku Konsumsi Dexlite & Pelumas (BBM Solar Tangki)
+    Route::get('/dexlite-consumption', DexliteConsumption::class)
+        ->middleware('role:admin,kasir_logistik,petugas_gudang,operator_produksi,demo')
+        ->name('dexlite.index');
 });
