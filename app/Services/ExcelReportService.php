@@ -109,6 +109,295 @@ class ExcelReportService
     }
 
     /**
+     * Export All-in-One Monthly Comprehensive Report (Multi-Sheet Excel: Rekonsiliasi, Penerimaan, Produksi, PO).
+     *
+     * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
+     * @param  Collection<int, mixed>  $receives
+     * @param  Collection<int, mixed>  $dockets
+     * @param  Collection<int, mixed>  $purchaseOrders
+     */
+    public function exportAllInOneMonthlyReport(
+        Collection|array $reconciliations,
+        Collection $receives,
+        Collection $dockets,
+        Collection $purchaseOrders,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        if (class_exists(Spreadsheet::class)) {
+            return $this->exportAllInOneMonthlyReportXlsx($reconciliations, $receives, $dockets, $purchaseOrders, $year, $month, $printedBy);
+        }
+
+        return $this->exportAllInOneMonthlyReportFallback($reconciliations, $receives, $dockets, $purchaseOrders, $year, $month, $printedBy);
+    }
+
+    /**
+     * Full Binary XLSX Export using PhpSpreadsheet for Multi-Sheet All-in-One Monthly Report.
+     */
+    protected function exportAllInOneMonthlyReportXlsx(
+        Collection|array $reconciliations,
+        Collection $receives,
+        Collection $dockets,
+        Collection $purchaseOrders,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $spreadsheet = new Spreadsheet;
+
+        // Sheet 1: Rekonsiliasi Stok
+        $sheet1 = $spreadsheet->getActiveSheet();
+        $this->populateStockReconciliationWorksheet($sheet1, $reconciliations, $year, $month, $printedBy);
+
+        // Sheet 2: Penerimaan Material
+        $sheet2 = $spreadsheet->createSheet();
+        $this->populateMaterialReceiveWorksheet($sheet2, $receives, $year, $month, $printedBy);
+
+        // Sheet 3: Produksi Harian & Surat Jalan
+        $sheet3 = $spreadsheet->createSheet();
+        $this->populateProductionDocketWorksheet($sheet3, $dockets, $year, $month, $printedBy);
+
+        // Sheet 4: Purchase Orders
+        $sheet4 = $spreadsheet->createSheet();
+        $this->populatePurchaseOrderWorksheet($sheet4, $purchaseOrders, $year, $month, $printedBy);
+
+        // Reset active sheet to Sheet 1
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $fileName = "Rekap_Bulanan_All_In_One_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Fallback Excel (.xls) HTML format for All-in-One Monthly Report.
+     *
+     * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
+     * @param  Collection<int, mixed>  $receives
+     * @param  Collection<int, mixed>  $dockets
+     * @param  Collection<int, mixed>  $purchaseOrders
+     */
+    protected function exportAllInOneMonthlyReportFallback(
+        Collection|array $reconciliations,
+        Collection $receives,
+        Collection $dockets,
+        Collection $purchaseOrders,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): StreamedResponse {
+        $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
+        $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
+        $user = $printedBy ?: 'Manajemen & Eksekutif';
+        $fileName = "Rekap_Bulanan_All_In_One_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xls';
+
+        $logoBase64 = $this->getLogoBase64();
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Cache-Control' => 'max-age=0, no-cache, no-store, must-revalidate',
+            'Pragma' => 'public',
+        ];
+
+        return response()->streamDownload(function () use (
+            $reconciliations,
+            $receives,
+            $dockets,
+            $purchaseOrders,
+            $monthName,
+            $printedAt,
+            $user,
+            $logoBase64
+        ) {
+            echo "\xEF\xBB\xBF";
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+            echo '<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
+            echo '<style>
+                body, table { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10pt; }
+                .title { font-size: 13pt; font-weight: bold; color: #18181B; }
+                .subtitle { font-size: 10pt; font-weight: bold; color: #334155; }
+                .meta { font-size: 9pt; color: #64748B; }
+                .section-header { font-size: 11pt; font-weight: bold; color: #0F172A; background-color: #E2E8F0; padding: 8px 12px; }
+                th { background-color: #18181B; color: #FFFFFF; font-weight: bold; text-align: center; border: 1px solid #334155; padding: 6px 10px; }
+                td { border: 1px solid #E2E8F0; padding: 5px 8px; vertical-align: middle; }
+                .tc { text-align: center; }
+                .tr { text-align: right; }
+                .tl { text-align: left; }
+                .bold { font-weight: bold; }
+                .bg-zebra { background-color: #F8FAFC; }
+                .bg-total { background-color: #F1F5F9; font-weight: bold; border-top: 1px solid #94A3B8; border-bottom: 3px double #0F172A; }
+            </style></head><body>';
+
+            echo '<table>';
+            echo '<tr>';
+            if ($logoBase64) {
+                echo '<td colspan="2" style="border:none; vertical-align:middle;"><img src="'.$logoBase64.'" height="46" alt="Logo TBI"></td>';
+                echo '<td colspan="10" style="border:none;">';
+            } else {
+                echo '<td colspan="12" style="border:none;">';
+            }
+            echo '<div class="title">PT TB BETON INDONESIA</div>';
+            echo '<div class="subtitle">LAPORAN REKAPITULASI BULANAN ALL-IN-ONE</div>';
+            echo '<div class="meta">Periode: '.$monthName.' | Dicetak Oleh: '.$user.' | Waktu: '.$printedAt.'</div>';
+            echo '</td></tr>';
+            echo '<tr><td colspan="12" style="border:none; height:15px;"></td></tr>';
+
+            // --- TABEL 1: REKONSILIASI STOK ---
+            echo '<tr><td colspan="12" class="section-header">1. REKONSILIASI & INTEGRITAS STOK MATERIAL</td></tr>';
+            echo '<tr>
+                <th>No</th><th>ID Material</th><th>Nama Material</th><th>Satuan</th>
+                <th>Stok Awal (Kg)</th><th>Penerimaan (+) (Kg)</th><th>Pemakaian (-) (Kg)</th><th>Stok Akhir Sistem (Kg)</th>
+                <th>Fisik Opname (Kg)</th><th>Deviasi Selisih (Kg)</th><th>Deviasi (%)</th><th>Status Rekonsiliasi</th>
+            </tr>';
+
+            $totalAwal = 0;
+            $totalIn = 0;
+            $totalOut = 0;
+            $totalTeoritis = 0;
+            foreach ($reconciliations as $idx => $row) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $hasOpname = ! empty($row['has_opname']);
+                $totalAwal += (float) $row['stok_awal'];
+                $totalIn += (float) $row['penerimaan'];
+                $totalOut += (float) $row['pemakaian'];
+                $totalTeoritis += (float) $row['stok_teoritis'];
+
+                $statusBg = match ($row['status']) {
+                    'SESUAI' => '#ECFDF5; color:#065F46',
+                    'KELEBIHAN' => '#FFFBEB; color:#92400E',
+                    'KEKURANGAN' => '#FEF2F2; color:#991B1B',
+                    default => '#F4F4F5; color:#71717A',
+                };
+
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) $row['material_id']).'</td>';
+                echo '<td class="tl bold">'.htmlspecialchars((string) $row['material_name']).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) $row['unit']).'</td>';
+                echo '<td class="tr">'.number_format((float) $row['stok_awal'], 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $row['penerimaan'], 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $row['pemakaian'], 2, '.', ',').'</td>';
+                echo '<td class="tr bold">'.number_format((float) $row['stok_teoritis'], 2, '.', ',').'</td>';
+                echo '<td class="tr">'.($hasOpname ? number_format((float) $row['stok_fisik'], 2, '.', ',') : '<i style="color:#94A3B8;">Belum Diopname</i>').'</td>';
+                echo '<td class="tr">'.($hasOpname ? number_format((float) $row['selisih'], 2, '.', ',') : '-').'</td>';
+                echo '<td class="tr">'.($hasOpname ? number_format((float) $row['persentase_selisih'], 2, '.', ',').'%' : '-').'</td>';
+                echo '<td class="tc bold" style="background-color:'.$statusBg.';">'.htmlspecialchars((string) $row['status']).'</td>';
+                echo '</tr>';
+            }
+            echo '<tr class="bg-total"><td colspan="4" class="tr bold">TOTAL</td>';
+            echo '<td class="tr bold">'.number_format($totalAwal, 2, '.', ',').'</td>';
+            echo '<td class="tr bold">'.number_format($totalIn, 2, '.', ',').'</td>';
+            echo '<td class="tr bold">'.number_format($totalOut, 2, '.', ',').'</td>';
+            echo '<td class="tr bold">'.number_format($totalTeoritis, 2, '.', ',').'</td><td colspan="4"></td></tr>';
+
+            echo '<tr><td colspan="12" style="border:none; height:20px;"></td></tr>';
+
+            // --- TABEL 2: PENERIMAAN MATERIAL TRUK ---
+            echo '<tr><td colspan="12" class="section-header">2. PENERIMAAN MATERIAL MASUK (INBOUND TRUK)</td></tr>';
+            echo '<tr>
+                <th>No</th><th>Tanggal</th><th>No. RI</th><th>Ref. No. PO</th><th>No. Polisi</th>
+                <th>Supplier / Vendor</th><th>Jenis Material</th><th>Volume (m³)</th><th>Density (kg/m³)</th>
+                <th>Total Berat (kg)</th><th>Tonase (Ton)</th><th></th>
+            </tr>';
+            $totalVol = 0;
+            $totalKg = 0;
+            foreach ($receives as $idx => $rec) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $v = (float) $rec->volume_m3;
+                $kg = (float) $rec->total_weight_kg;
+                $totalVol += $v;
+                $totalKg += $kg;
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc">'.($rec->receive_date ? $rec->receive_date->format('d/m/Y') : '-').'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $rec->ri_no).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($rec->purchaseOrder?->po_number ?? '-')).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $rec->vehicle_no).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($rec->supplier?->name ?? 'Supplier Umum')).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($rec->material?->name ?? '-')).'</td>';
+                echo '<td class="tr">'.number_format($v, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $rec->density_used, 2, '.', ',').'</td>';
+                echo '<td class="tr bold">'.number_format($kg, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format($kg / 1000, 2, '.', ',').'</td><td></td>';
+                echo '</tr>';
+            }
+            echo '<tr class="bg-total"><td colspan="7" class="tr bold">TOTAL PENERIMAAN</td>';
+            echo '<td class="tr bold">'.number_format($totalVol, 2, '.', ',').'</td><td></td>';
+            echo '<td class="tr bold">'.number_format($totalKg, 2, '.', ',').'</td>';
+            echo '<td class="tr bold">'.number_format($totalKg / 1000, 2, '.', ',').'</td><td></td></tr>';
+
+            echo '<tr><td colspan="12" style="border:none; height:20px;"></td></tr>';
+
+            // --- TABEL 3: PRODUKSI HARIAN & SURAT JALAN ---
+            echo '<tr><td colspan="12" class="section-header">3. PRODUKSI HARIAN & SURAT JALAN DOCKET BETON</td></tr>';
+            echo '<tr>
+                <th>No</th><th>No. Docket</th><th>Tanggal</th><th>Jam Muat</th><th>Ref. No. SO</th>
+                <th>Customer</th><th>Mutu Beton</th><th>No. Truk</th><th>Volume (m³)</th>
+                <th>Kumulatif (m³)</th><th>Operator</th><th></th>
+            </tr>';
+            $totalDocketVol = 0;
+            foreach ($dockets as $idx => $d) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $dVol = (float) $d->volume_m3;
+                $totalDocketVol += $dVol;
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $d->docket_no).'</td>';
+                echo '<td class="tc">'.($d->production_date ? Carbon::parse($d->production_date)->format('d/m/Y') : '-').'</td>';
+                echo '<td class="tc">'.substr((string) $d->time_load, 0, 5).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($d->salesOrder?->so_number ?? '-')).'</td>';
+                echo '<td class="tl bold">'.htmlspecialchars((string) $d->customer_name).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $d->mutu_code).'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) $d->truck_no).'</td>';
+                echo '<td class="tr bold">'.number_format($dVol, 2, '.', ',').'</td>';
+                echo '<td class="tr">'.number_format((float) $d->daily_cumulative_m3, 2, '.', ',').'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($d->creator?->name ?? 'Operator')).'</td><td></td>';
+                echo '</tr>';
+            }
+            echo '<tr class="bg-total"><td colspan="8" class="tr bold">TOTAL PRODUKSI COR</td>';
+            echo '<td class="tr bold">'.number_format($totalDocketVol, 2, '.', ',').'</td><td colspan="3"></td></tr>';
+
+            echo '<tr><td colspan="12" style="border:none; height:20px;"></td></tr>';
+
+            // --- TABEL 4: PURCHASE ORDER MATERIAL ---
+            echo '<tr><td colspan="12" class="section-header">4. REKAPITULASI PURCHASE ORDER MATERIAL</td></tr>';
+            echo '<tr>
+                <th>No</th><th>No. PO</th><th>Tanggal PO</th><th>Supplier</th><th>Jenis Material</th>
+                <th>Kuantitas</th><th>Satuan</th><th>Harga Satuan (Rp)</th><th>Grand Total (Rp)</th>
+                <th>Status</th><th>Armada / Kapal</th><th></th>
+            </tr>';
+            $poQtySum = 0;
+            $poTotalSum = 0;
+            foreach ($purchaseOrders as $idx => $po) {
+                $zebra = ($idx % 2 === 1) ? ' class="bg-zebra"' : '';
+                $poQty = (float) $po->qty_ordered;
+                $poGrand = (float) ($po->grand_total ?? 0);
+                $poQtySum += $poQty;
+                $poTotalSum += $poGrand;
+                echo "<tr{$zebra}>";
+                echo '<td class="tc">'.($idx + 1).'</td>';
+                echo '<td class="tc bold">'.htmlspecialchars((string) $po->po_number).'</td>';
+                echo '<td class="tc">'.($po->po_date ? $po->po_date->format('d/m/Y') : '-').'</td>';
+                echo '<td class="tl bold">'.htmlspecialchars((string) ($po->supplier?->name ?? 'Supplier Umum')).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($po->material_type_input ?: ($po->material?->name ?? '-'))).'</td>';
+                echo '<td class="tr">'.number_format($poQty, 2, '.', ',').'</td>';
+                echo '<td class="tc">'.htmlspecialchars((string) ($po->unit ?? 'Kg')).'</td>';
+                echo '<td class="tr">'.number_format((float) ($po->unit_price ?? 0), 2, '.', ',').'</td>';
+                echo '<td class="tr bold">'.number_format($poGrand, 2, '.', ',').'</td>';
+                echo '<td class="tc bold">'.str_replace('_', ' ', strtoupper((string) $po->status)).'</td>';
+                echo '<td class="tl">'.htmlspecialchars((string) ($po->vessel_name ?: '-')).'</td><td></td>';
+                echo '</tr>';
+            }
+            echo '<tr class="bg-total"><td colspan="5" class="tr bold">TOTAL PURCHASE ORDER</td>';
+            echo '<td class="tr bold">'.number_format($poQtySum, 2, '.', ',').'</td><td colspan="2"></td>';
+            echo '<td class="tr bold">'.number_format($poTotalSum, 2, '.', ',').'</td><td colspan="3"></td></tr>';
+
+            echo '</table></body></html>';
+        }, $fileName, $headers);
+    }
+
+    /**
      * Full Binary XLSX Export using PhpSpreadsheet for Stock Reconciliation.
      *
      * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
@@ -121,10 +410,29 @@ class ExcelReportService
     ): StreamedResponse {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
+        $this->populateStockReconciliationWorksheet($sheet, $reconciliations, $year, $month, $printedBy);
+
+        $fileName = "Rekonsiliasi_Stok_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Populate Stock Reconciliation Worksheet with headers, data, formulas, and ergonomics.
+     *
+     * @param  Collection<int, array<string, mixed>>|array<int, array<string, mixed>>  $reconciliations
+     */
+    public function populateStockReconciliationWorksheet(
+        Worksheet $sheet,
+        Collection|array $reconciliations,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): void {
         $sheet->setTitle('Rekonsiliasi Stok');
         $sheet->setShowGridLines(true);
 
-        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+        $sheet->getParent()?->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
 
         $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
         $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
@@ -283,7 +591,7 @@ class ExcelReportService
             $currentRow++;
         }
 
-        // 4. Summary Row
+        // 4. Summary Row (Totals)
         $endDataRow = max($startRow + 1, $currentRow - 1);
         $sheet->getRowDimension($currentRow)->setRowHeight(24);
         $sheet->mergeCells("B{$currentRow}:E{$currentRow}");
@@ -343,10 +651,6 @@ class ExcelReportService
 
         $sheet->freezePane('B7');
         $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
-
-        $fileName = "Rekonsiliasi_Stok_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
-
-        return $this->streamSpreadsheet($spreadsheet, $fileName);
     }
 
     /**
@@ -362,10 +666,29 @@ class ExcelReportService
     ): StreamedResponse {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
+        $this->populatePurchaseOrderWorksheet($sheet, $purchaseOrders, $year, $month, $printedBy);
+
+        $fileName = "Rekap_PO_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Populate Purchase Order Worksheet with headers, data, formulas, and ergonomics.
+     *
+     * @param  Collection<int, mixed>  $purchaseOrders
+     */
+    public function populatePurchaseOrderWorksheet(
+        Worksheet $sheet,
+        Collection $purchaseOrders,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): void {
         $sheet->setTitle('Rekapitulasi PO');
         $sheet->setShowGridLines(true);
 
-        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+        $sheet->getParent()?->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
 
         $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
         $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
@@ -591,10 +914,6 @@ class ExcelReportService
 
         $sheet->freezePane('B7');
         $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
-
-        $fileName = "Rekap_PO_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
-
-        return $this->streamSpreadsheet($spreadsheet, $fileName);
     }
 
     /**
@@ -743,10 +1062,29 @@ class ExcelReportService
     ): StreamedResponse {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
+        $this->populateMaterialReceiveWorksheet($sheet, $receives, $year, $month, $printedBy);
+
+        $fileName = "Rekap_Penerimaan_Material_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Populate Material Receive Worksheet with headers, data, formulas, and ergonomics.
+     *
+     * @param  Collection<int, mixed>  $receives
+     */
+    public function populateMaterialReceiveWorksheet(
+        Worksheet $sheet,
+        Collection $receives,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): void {
         $sheet->setTitle('Penerimaan Material');
         $sheet->setShowGridLines(true);
 
-        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+        $sheet->getParent()?->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
 
         $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
         $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
@@ -922,10 +1260,6 @@ class ExcelReportService
 
         $sheet->freezePane('B7');
         $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
-
-        $fileName = "Rekap_Penerimaan_Material_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
-
-        return $this->streamSpreadsheet($spreadsheet, $fileName);
     }
 
     /**
@@ -1043,10 +1377,29 @@ class ExcelReportService
     ): StreamedResponse {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
+        $this->populateProductionDocketWorksheet($sheet, $dockets, $year, $month, $printedBy);
+
+        $fileName = "Rekap_Produksi_Docket_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+        return $this->streamSpreadsheet($spreadsheet, $fileName);
+    }
+
+    /**
+     * Populate Production Docket Worksheet with headers, data, formulas, and ergonomics.
+     *
+     * @param  Collection<int, mixed>  $dockets
+     */
+    public function populateProductionDocketWorksheet(
+        Worksheet $sheet,
+        Collection $dockets,
+        int $year,
+        int $month,
+        ?string $printedBy = null
+    ): void {
         $sheet->setTitle('Rekapitulasi Produksi');
         $sheet->setShowGridLines(true);
 
-        $spreadsheet->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
+        $sheet->getParent()?->getDefaultStyle()->getFont()->setName(self::FONT_FAMILY)->setSize(10);
 
         $monthName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
         $printedAt = Carbon::now()->translatedFormat('d F Y H:i').' WITA';
@@ -1221,10 +1574,6 @@ class ExcelReportService
 
         $sheet->freezePane('B7');
         $sheet->setAutoFilter("B{$startRow}:{$lastColLetter}{$endDataRow}");
-
-        $fileName = "Rekap_Produksi_Docket_TBI_{$year}_".str_pad((string) $month, 2, '0', STR_PAD_LEFT).'.xlsx';
-
-        return $this->streamSpreadsheet($spreadsheet, $fileName);
     }
 
     /**

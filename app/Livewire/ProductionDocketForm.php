@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\JobMix;
 use App\Models\ProductionDocket;
 use App\Models\SalesOrder;
 use App\Services\DocumentNumberService;
@@ -11,6 +12,7 @@ use App\Services\StockReconciliationService;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
@@ -82,6 +84,22 @@ class ProductionDocketForm extends Component
     public ?string $filterEndDate = null;
 
     public int $perPage = 10;
+
+    // Dispatch & Delivery Status: 'loading', 'in_transit', 'on_site', 'completed'
+    public string $delivery_status = 'completed';
+
+    public string $filterDeliveryStatus = 'all';
+
+    // Moisture Correction Calculator State
+    public bool $showMoistureCalculator = false;
+
+    public string|float $moisture_pasir_palu = '';
+
+    public string|float $moisture_pasir_lokal = '';
+
+    public string|float $moisture_split = '';
+
+    public ?string $moisture_correction_summary = null;
 
     // Edit Modal State (Khusus Admin / Master)
     public bool $showEditModal = false;
@@ -342,6 +360,128 @@ class ProductionDocketForm extends Component
         };
     }
 
+    public string $edit_delivery_status = 'completed';
+
+    public function setFilterDeliveryStatus(string $status): void
+    {
+        $this->filterDeliveryStatus = $status;
+        $this->resetPage();
+    }
+
+    public function updateDeliveryStatus(int $docketId, string $newStatus): void
+    {
+        $validStatuses = array_keys(ProductionDocket::deliveryStatuses());
+        if (! in_array($newStatus, $validStatuses, true)) {
+            return;
+        }
+
+        $docket = ProductionDocket::findOrFail($docketId);
+        $docket->delivery_status = $newStatus;
+        $docket->save();
+
+        $info = $docket->delivery_status_info;
+        session()->flash('success', "Status ritase {$docket->docket_no} diperbarui: {$info['icon']} {$info['label']}");
+    }
+
+    #[Computed]
+    public function deliveryStatusCounts(): array
+    {
+        $baseQuery = ProductionDocket::query()
+            ->when($this->filterStartDate, fn ($q) => $q->whereDate('production_date', '>=', $this->filterStartDate))
+            ->when($this->filterEndDate, fn ($q) => $q->whereDate('production_date', '<=', $this->filterEndDate));
+
+        return [
+            'all' => (clone $baseQuery)->count(),
+            'loading' => (clone $baseQuery)->where('delivery_status', ProductionDocket::STATUS_LOADING)->count(),
+            'in_transit' => (clone $baseQuery)->where('delivery_status', ProductionDocket::STATUS_IN_TRANSIT)->count(),
+            'on_site' => (clone $baseQuery)->where('delivery_status', ProductionDocket::STATUS_ON_SITE)->count(),
+            'completed' => (clone $baseQuery)->where('delivery_status', ProductionDocket::STATUS_COMPLETED)->count(),
+        ];
+    }
+
+    public function autoFillFromJobMix(): void
+    {
+        if (empty($this->mutu_code)) {
+            session()->flash('error', 'Pilih Mutu Beton terlebih dahulu.');
+
+            return;
+        }
+
+        $vol = (float) str_replace(',', '.', (string) $this->volume_m3);
+        if ($vol <= 0) {
+            session()->flash('error', 'Masukkan Volume (m³) terlebih dahulu.');
+
+            return;
+        }
+
+        $jm = JobMix::where('mutu_code', $this->mutu_code)->first();
+        if (! $jm) {
+            session()->flash('error', "Resep untuk mutu {$this->mutu_code} tidak ditemukan di master data.");
+
+            return;
+        }
+
+        $this->silo1_act = round((float) $jm->semen_kg * $vol, 2);
+        $this->pasir_palu_act = round((float) $jm->pasir_palu_kg * $vol, 2);
+        $this->pasir_lokal_act = round((float) $jm->pasir_lokal_kg * $vol, 2);
+        $this->split_1_2_act = round((float) $jm->split_1_2_kg * $vol, 2);
+        $this->split_2_3_act = round((float) $jm->split_2_3_kg * $vol, 2);
+        $this->water_act = round(((float) ($jm->water_liter ?: 180.0)) * $vol, 2);
+        $this->admixture_act = round((float) $jm->additive_liter * $vol, 2);
+
+        $this->moisture_correction_summary = null;
+        session()->flash('success', "Target batching standar mutu {$this->mutu_code} ({$vol} m³) berhasil dimuat!");
+    }
+
+    public function toggleMoistureCalculator(): void
+    {
+        $this->showMoistureCalculator = ! $this->showMoistureCalculator;
+    }
+
+    public function applyMoistureCorrection(): void
+    {
+        $mPalu = (float) str_replace(',', '.', (string) $this->moisture_pasir_palu);
+        $mLokal = (float) str_replace(',', '.', (string) $this->moisture_pasir_lokal);
+        $mSplit = (float) str_replace(',', '.', (string) $this->moisture_split);
+
+        if ($mPalu <= 0 && $mLokal <= 0 && $mSplit <= 0) {
+            session()->flash('info', 'Masukkan persentase kadar air (> 0%) pada salah satu agregat.');
+
+            return;
+        }
+
+        $curPalu = (float) str_replace(',', '.', (string) $this->pasir_palu_act);
+        $curLokal = (float) str_replace(',', '.', (string) $this->pasir_lokal_act);
+        $curSplit12 = (float) str_replace(',', '.', (string) $this->split_1_2_act);
+        $curSplit23 = (float) str_replace(',', '.', (string) $this->split_2_3_act);
+        $curWater = (float) str_replace(',', '.', (string) $this->water_act);
+
+        $waterPalu = $mPalu > 0 ? round($curPalu * ($mPalu / 100), 2) : 0;
+        $waterLokal = $mLokal > 0 ? round($curLokal * ($mLokal / 100), 2) : 0;
+        $waterSplit12 = $mSplit > 0 ? round($curSplit12 * ($mSplit / 100), 2) : 0;
+        $waterSplit23 = $mSplit > 0 ? round($curSplit23 * ($mSplit / 100), 2) : 0;
+
+        $totalWaterDeduction = round($waterPalu + $waterLokal + $waterSplit12 + $waterSplit23, 2);
+
+        if ($waterPalu > 0) {
+            $this->pasir_palu_act = round($curPalu + $waterPalu, 2);
+        }
+        if ($waterLokal > 0) {
+            $this->pasir_lokal_act = round($curLokal + $waterLokal, 2);
+        }
+        if ($waterSplit12 > 0) {
+            $this->split_1_2_act = round($curSplit12 + $waterSplit12, 2);
+        }
+        if ($waterSplit23 > 0) {
+            $this->split_2_3_act = round($curSplit23 + $waterSplit23, 2);
+        }
+
+        $this->water_act = max(0, round($curWater - $totalWaterDeduction, 2));
+
+        $this->moisture_correction_summary = "Kompensasi Kadar Air: Air dikurangi {$totalWaterDeduction} L. Agregat basah disesuaikan agar w/c ratio tetap presisi.";
+        session()->flash('success', "Kompensasi kadar air berhasil diterapkan! Air adukan dikurangi {$totalWaterDeduction} Liter.");
+    }
+
     private function normalizeNumericInputs(): void
     {
         $numericFields = [
@@ -440,6 +580,7 @@ class ProductionDocketForm extends Component
             'mutu_code' => $upperMutu,
             'time_load' => $this->time_load,
             'volume_m3' => $currentVolume,
+            'delivery_status' => $this->delivery_status ?: ProductionDocket::STATUS_COMPLETED,
             'daily_cumulative_m3' => $dailyCumulative,
             'load_time_diff' => $loadTimeDiff,
             'silo1_tar' => 0,
@@ -528,6 +669,7 @@ class ProductionDocketForm extends Component
         $this->edit_mutu_code = $docket->mutu_code;
         $this->edit_truck_no = $docket->truck_no;
         $this->edit_volume_m3 = (float) $docket->volume_m3;
+        $this->edit_delivery_status = $docket->delivery_status ?: ProductionDocket::STATUS_COMPLETED;
         $this->edit_silo1_act = (float) $docket->silo1_act;
         $this->edit_silo2_act = (float) $docket->silo2_act;
         $this->edit_pasir_palu_act = (float) $docket->pasir_palu_act;
@@ -572,6 +714,7 @@ class ProductionDocketForm extends Component
             'edit_mutu_code' => 'required|string|max:50',
             'edit_truck_no' => 'required|string|max:50',
             'edit_volume_m3' => 'required|numeric|min:0.01|max:100',
+            'edit_delivery_status' => 'required|string|in:loading,in_transit,on_site,completed',
             'edit_silo1_act' => 'required|numeric|min:0',
             'edit_silo2_act' => 'nullable|numeric|min:0',
             'edit_pasir_palu_act' => 'required|numeric|min:0',
@@ -593,6 +736,7 @@ class ProductionDocketForm extends Component
             'mutu_code' => strtoupper(trim($this->edit_mutu_code)),
             'truck_no' => $this->formatTruckNo($this->edit_truck_no),
             'volume_m3' => (float) $this->edit_volume_m3,
+            'delivery_status' => $this->edit_delivery_status ?: ProductionDocket::STATUS_COMPLETED,
             'silo1_act' => (float) $this->edit_silo1_act,
             'silo2_act' => (float) ($this->edit_silo2_act ?: 0),
             'pasir_palu_act' => (float) $this->edit_pasir_palu_act,
@@ -640,6 +784,9 @@ class ProductionDocketForm extends Component
                         });
                 });
             })
+            ->when($this->filterDeliveryStatus && $this->filterDeliveryStatus !== 'all', function ($query) {
+                $query->where('delivery_status', $this->filterDeliveryStatus);
+            })
             ->when($this->filterStartDate, fn ($q) => $q->whereDate('production_date', '>=', $this->filterStartDate))
             ->when($this->filterEndDate, fn ($q) => $q->whereDate('production_date', '<=', $this->filterEndDate))
             ->latest('id')
@@ -655,6 +802,7 @@ class ProductionDocketForm extends Component
             'activeSalesOrders' => $activeSalesOrders,
             'kSeriesMutuList' => $kSeriesMutuList,
             'fcFsMutuList' => $fcFsMutuList,
+            'deliveryStatuses' => ProductionDocket::deliveryStatuses(),
         ]);
     }
 }

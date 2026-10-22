@@ -20,6 +20,7 @@ class ProductionDocket extends Model
         'mutu_code',
         'time_load',
         'volume_m3',
+        'delivery_status',
         'daily_cumulative_m3',
         'load_time_diff',
         'silo1_tar',
@@ -40,6 +41,62 @@ class ProductionDocket extends Model
         'admixture_act',
         'created_by',
     ];
+
+    public const STATUS_LOADING = 'loading';
+
+    public const STATUS_IN_TRANSIT = 'in_transit';
+
+    public const STATUS_ON_SITE = 'on_site';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    /**
+     * @return array<string, array{label: string, badge: string, icon: string, short: string}>
+     */
+    public static function deliveryStatuses(): array
+    {
+        return [
+            self::STATUS_LOADING => [
+                'label' => 'Antri Muat (Plant)',
+                'badge' => 'amber',
+                'icon' => '🔄',
+                'short' => 'Loading',
+            ],
+            self::STATUS_IN_TRANSIT => [
+                'label' => 'Dalam Perjalanan',
+                'badge' => 'blue',
+                'icon' => '🚚',
+                'short' => 'In Transit',
+            ],
+            self::STATUS_ON_SITE => [
+                'label' => 'Di Lokasi Proyek',
+                'badge' => 'purple',
+                'icon' => '🏗️',
+                'short' => 'On Site',
+            ],
+            self::STATUS_COMPLETED => [
+                'label' => 'Selesai Bongkar',
+                'badge' => 'emerald',
+                'icon' => '✅',
+                'short' => 'Selesai',
+            ],
+        ];
+    }
+
+    /**
+     * @return array{label: string, badge: string, icon: string, short: string}
+     */
+    public function getDeliveryStatusInfoAttribute(): array
+    {
+        $statuses = self::deliveryStatuses();
+
+        return $statuses[$this->delivery_status] ?? [
+            'label' => ucfirst($this->delivery_status ?? 'completed'),
+            'badge' => 'zinc',
+            'icon' => 'ℹ️',
+            'short' => ucfirst($this->delivery_status ?? 'completed'),
+        ];
+    }
 
     protected function casts(): array
     {

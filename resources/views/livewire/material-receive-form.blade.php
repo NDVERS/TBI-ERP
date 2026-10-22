@@ -21,10 +21,16 @@
             <button
                 type="button"
                 @click="$dispatch('open-additive-modal')"
-                class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-800 transition-colors shadow-2xs whitespace-nowrap"
+                class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border transition-colors shadow-2xs whitespace-nowrap {{ $this->lowStockPowdersCount > 0 ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100' : 'border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-800' }}"
                 title="Lihat rincian sisa serbuk kimia (SNF, Glukonate, Maltodextrine)"
             >
                 <span>🔍 Sisa Serbuk Additive</span>
+                @if ($this->lowStockPowdersCount > 0)
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                        <span>⚠️</span>
+                        <span>{{ $this->lowStockPowdersCount }} Menipis</span>
+                    </span>
+                @endif
             </button>
             <button
                 type="button"
@@ -53,6 +59,22 @@
                     description="Lengkapi detail surat jalan / nomor RI, identitas armada, dan jenis material masuk."
                 >
                     <div class="space-y-4">
+                        {{-- Quick Action: Salin Data Truk Terakhir --}}
+                        <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+                            <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Identitas Truk & Material Masuk</span>
+                            <button
+                                type="button"
+                                wire:click="copyLastEntry"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors cursor-pointer shadow-2xs"
+                                title="Salin Supplier, Material, Density, dan No. Polisi dari penerimaan truk terakhir"
+                            >
+                                <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                </svg>
+                                <span>📋 Salin Data Truk Terakhir</span>
+                            </button>
+                        </div>
+
                         {{-- Referensi No. PO (Opsional) --}}
                         <div>
                             <x-ui.select
@@ -681,10 +703,21 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 {{-- Powder 1: SNF 001 --}}
-                                <div class="p-2.5 rounded bg-white border border-zinc-200">
+                                @php
+                                    $isSnf1Low = $snf1Stock < 750;
+                                    $isSnf1Exceeded = (float) $conv_snf1_kg > $snf1Stock;
+                                @endphp
+                                <div class="p-2.5 rounded bg-white border {{ $isSnf1Exceeded ? 'border-red-300 ring-1 ring-red-200' : ($isSnf1Low ? 'border-amber-300' : 'border-zinc-200') }}">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="font-semibold text-zinc-800">1. SNF-C 001 (15%)</span>
-                                        <span class="text-[10px] font-mono text-zinc-500">Tersisa: {{ number_format($snf1Stock, 1, ',', '.') }} Kg</span>
+                                        <div class="flex items-center gap-1 font-mono text-[10px]">
+                                            <span class="text-zinc-500">Tersisa: {{ number_format($snf1Stock, 1, ',', '.') }} Kg</span>
+                                            @if ($snf1Stock <= 0)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800 border border-red-200">Habis</span>
+                                            @elseif ($isSnf1Low)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">&lt; 1 Batch</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <x-ui.input
                                         wire:model.live.debounce.300ms="conv_snf1_kg"
@@ -694,13 +727,27 @@
                                         step="0.01"
                                         required
                                     />
+                                    @if ($isSnf1Exceeded)
+                                        <p class="mt-1 text-[11px] text-red-600 font-medium">⚠️ Melebihi sisa stok (Tersedia: {{ number_format($snf1Stock, 1, ',', '.') }} Kg)</p>
+                                    @endif
                                 </div>
 
                                 {{-- Powder 2: SNF 002 --}}
-                                <div class="p-2.5 rounded bg-white border border-zinc-200">
+                                @php
+                                    $isSnf2Low = $snf2Stock < 750;
+                                    $isSnf2Exceeded = (float) $conv_snf2_kg > $snf2Stock;
+                                @endphp
+                                <div class="p-2.5 rounded bg-white border {{ $isSnf2Exceeded ? 'border-red-300 ring-1 ring-red-200' : ($isSnf2Low ? 'border-amber-300' : 'border-zinc-200') }}">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="font-semibold text-zinc-800">2. SNF-C 002 (15%)</span>
-                                        <span class="text-[10px] font-mono text-zinc-500">Tersisa: {{ number_format($snf2Stock, 1, ',', '.') }} Kg</span>
+                                        <div class="flex items-center gap-1 font-mono text-[10px]">
+                                            <span class="text-zinc-500">Tersisa: {{ number_format($snf2Stock, 1, ',', '.') }} Kg</span>
+                                            @if ($snf2Stock <= 0)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800 border border-red-200">Habis</span>
+                                            @elseif ($isSnf2Low)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">&lt; 1 Batch</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <x-ui.input
                                         wire:model.live.debounce.300ms="conv_snf2_kg"
@@ -710,13 +757,27 @@
                                         step="0.01"
                                         required
                                     />
+                                    @if ($isSnf2Exceeded)
+                                        <p class="mt-1 text-[11px] text-red-600 font-medium">⚠️ Melebihi sisa stok (Tersedia: {{ number_format($snf2Stock, 1, ',', '.') }} Kg)</p>
+                                    @endif
                                 </div>
 
                                 {{-- Powder 3: Sodium Glukonate --}}
-                                <div class="p-2.5 rounded bg-white border border-zinc-200">
+                                @php
+                                    $isGluLow = $gluStock < 275;
+                                    $isGluExceeded = (float) $conv_sodium_glukonate_kg > $gluStock;
+                                @endphp
+                                <div class="p-2.5 rounded bg-white border {{ $isGluExceeded ? 'border-red-300 ring-1 ring-red-200' : ($isGluLow ? 'border-amber-300' : 'border-zinc-200') }}">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="font-semibold text-zinc-800">3. Sodium Glukonate (6%)</span>
-                                        <span class="text-[10px] font-mono text-zinc-500">Tersisa: {{ number_format($gluStock, 1, ',', '.') }} Kg</span>
+                                        <div class="flex items-center gap-1 font-mono text-[10px]">
+                                            <span class="text-zinc-500">Tersisa: {{ number_format($gluStock, 1, ',', '.') }} Kg</span>
+                                            @if ($gluStock <= 0)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800 border border-red-200">Habis</span>
+                                            @elseif ($isGluLow)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">&lt; 1 Batch</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <x-ui.input
                                         wire:model.live.debounce.300ms="conv_sodium_glukonate_kg"
@@ -726,13 +787,27 @@
                                         step="0.01"
                                         required
                                     />
+                                    @if ($isGluExceeded)
+                                        <p class="mt-1 text-[11px] text-red-600 font-medium">⚠️ Melebihi sisa stok (Tersedia: {{ number_format($gluStock, 1, ',', '.') }} Kg)</p>
+                                    @endif
                                 </div>
 
                                 {{-- Powder 4: Maltodextrine --}}
-                                <div class="p-2.5 rounded bg-white border border-zinc-200">
+                                @php
+                                    $isMalLow = $malStock < 50;
+                                    $isMalExceeded = (float) $conv_maltodextrine_kg > $malStock;
+                                @endphp
+                                <div class="p-2.5 rounded bg-white border {{ $isMalExceeded ? 'border-red-300 ring-1 ring-red-200' : ($isMalLow ? 'border-amber-300' : 'border-zinc-200') }}">
                                     <div class="flex items-center justify-between mb-1">
                                         <span class="font-semibold text-zinc-800">4. Maltodextrine (1%)</span>
-                                        <span class="text-[10px] font-mono text-zinc-500">Tersisa: {{ number_format($malStock, 1, ',', '.') }} Kg</span>
+                                        <div class="flex items-center gap-1 font-mono text-[10px]">
+                                            <span class="text-zinc-500">Tersisa: {{ number_format($malStock, 1, ',', '.') }} Kg</span>
+                                            @if ($malStock <= 0)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800 border border-red-200">Habis</span>
+                                            @elseif ($isMalLow)
+                                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">&lt; 1 Batch</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <x-ui.input
                                         wire:model.live.debounce.300ms="conv_maltodextrine_kg"
@@ -742,6 +817,9 @@
                                         step="0.01"
                                         required
                                     />
+                                    @if ($isMalExceeded)
+                                        <p class="mt-1 text-[11px] text-red-600 font-medium">⚠️ Melebihi sisa stok (Tersedia: {{ number_format($malStock, 1, ',', '.') }} Kg)</p>
+                                    @endif
                                 </div>
                             </div>
 

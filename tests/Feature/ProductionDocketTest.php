@@ -468,4 +468,70 @@ class ProductionDocketTest extends TestCase
             ->call('gotoPage', 2)
             ->assertSet('paginators.page', 2);
     }
+
+    public function test_dispatch_kanban_board_and_delivery_status_quick_update(): void
+    {
+        $operator = User::factory()->create(['role' => 'operator_produksi']);
+
+        $docket = ProductionDocket::create([
+            'docket_no' => 'SP01_9901',
+            'production_date' => Carbon::now()->toDateString(),
+            'truck_no' => 'TM-07',
+            'customer_name' => 'PT Proyek Kalimantan',
+            'address' => 'Jl Mulawarman',
+            'mutu_code' => 'K250 / C',
+            'time_load' => '09:00',
+            'volume_m3' => 6.00,
+            'delivery_status' => 'loading',
+            'daily_cumulative_m3' => 6.00,
+            'created_by' => $operator->id,
+        ]);
+
+        Livewire::actingAs($operator)
+            ->test(ProductionDocketForm::class)
+            ->assertSee('Antri Muat (Plant)')
+            ->assertSee('Dalam Perjalanan')
+            ->assertSee('Selesai Bongkar')
+            ->call('updateDeliveryStatus', $docket->id, 'in_transit');
+
+        $this->assertEquals('in_transit', $docket->fresh()->delivery_status);
+
+        Livewire::actingAs($operator)
+            ->test(ProductionDocketForm::class)
+            ->call('setFilterDeliveryStatus', 'in_transit')
+            ->assertSet('filterDeliveryStatus', 'in_transit')
+            ->assertSee('SP01_9901');
+    }
+
+    public function test_auto_fill_from_job_mix_and_moisture_correction_calculator(): void
+    {
+        $operator = User::factory()->create(['role' => 'operator_produksi']);
+
+        $jobMix = JobMix::where('mutu_code', 'K250 / C')->first();
+        $this->assertNotNull($jobMix);
+
+        // Test Auto-Fill from Job Mix for 7 m3
+        $component = Livewire::actingAs($operator)
+            ->test(ProductionDocketForm::class)
+            ->set('mutu_code', 'K250 / C')
+            ->set('volume_m3', '7.00')
+            ->call('autoFillFromJobMix')
+            ->assertSet('silo1_act', round($jobMix->semen_kg * 7, 2))
+            ->assertSet('pasir_palu_act', round($jobMix->pasir_palu_kg * 7, 2));
+
+        $initialWater = (float) $component->get('water_act');
+        $initialPalu = (float) $component->get('pasir_palu_act');
+
+        // Test Moisture Correction: Pasir Palu 4.0%
+        $component->set('moisture_pasir_palu', '4.0')
+            ->call('applyMoistureCorrection');
+
+        $expectedWaterDeduction = round($initialPalu * 0.04, 2);
+        $expectedNewWater = max(0, round($initialWater - $expectedWaterDeduction, 2));
+        $expectedNewPalu = round($initialPalu + $expectedWaterDeduction, 2);
+
+        $this->assertEquals($expectedNewWater, (float) $component->get('water_act'));
+        $this->assertEquals($expectedNewPalu, (float) $component->get('pasir_palu_act'));
+        $this->assertNotNull($component->get('moisture_correction_summary'));
+    }
 }

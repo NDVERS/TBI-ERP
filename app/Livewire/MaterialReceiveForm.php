@@ -248,12 +248,6 @@ class MaterialReceiveForm extends Component
     {
         $target = (float) str_replace(',', '.', (string) $this->conv_sbtjm2_liter);
         if ($target > 0) {
-            // Rasio batch standar (5.000 L SBTJM2):
-            // SNF 001: 750 Kg (15%)
-            // SNF 002: 750 Kg (15%)
-            // Sodium Glukonate: 275 Kg (5.5% ~ 6%)
-            // Maltodextrine: 50 Kg (1%)
-            // Air: 3.175 Kg (63.5%)
             $factor = $target / 5000.0;
             $this->conv_snf1_kg = round(750 * $factor, 2);
             $this->conv_snf2_kg = round(750 * $factor, 2);
@@ -261,6 +255,46 @@ class MaterialReceiveForm extends Component
             $this->conv_maltodextrine_kg = round(50 * $factor, 2);
             $this->conv_water_kg = round(3175 * $factor, 2);
         }
+    }
+
+    #[Computed]
+    public function lowStockPowdersCount(): int
+    {
+        return AdditivePowder::all()->filter(function (AdditivePowder $p): bool {
+            return $p->isLowStock();
+        })->count();
+    }
+
+    public function copyLastEntry(): void
+    {
+        $lastReceive = MaterialReceive::with(['supplier', 'material'])->latest('id')->first();
+        if (! $lastReceive) {
+            session()->flash('info', 'Belum ada catatan penerimaan truk sebelumnya untuk disalin.');
+
+            return;
+        }
+
+        $this->supplier_id = $lastReceive->supplier_id;
+        $this->material_id = $lastReceive->material_id;
+        $this->updatedMaterialId($lastReceive->material_id);
+
+        if ($lastReceive->purchase_order_id) {
+            $this->purchase_order_id = $lastReceive->purchase_order_id;
+        }
+
+        if ($lastReceive->density_used > 0) {
+            $this->density = (string) (float) $lastReceive->density_used;
+        }
+
+        if (! empty($lastReceive->vehicle_no) && $lastReceive->vehicle_no !== 'INTERNAL') {
+            $this->vehicle_no = $lastReceive->vehicle_no;
+        }
+
+        $materialName = $lastReceive->material?->name ?? 'Material';
+        $supplierName = $lastReceive->supplier?->name ?? 'Supplier';
+        $plate = ! empty($lastReceive->vehicle_no) ? " (No. Pol: {$lastReceive->vehicle_no})" : '';
+
+        session()->flash('success', "Data disalin dari truk terakhir: {$supplierName} — {$materialName}{$plate}");
     }
 
     public function save(ProcurementCalculatorService $calculator): void

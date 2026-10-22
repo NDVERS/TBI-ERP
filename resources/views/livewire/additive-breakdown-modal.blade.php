@@ -36,6 +36,20 @@
                         </button>
                     </div>
 
+                    {{-- Peringatan Ambang Batas Minimum --}}
+                    @php
+                        $lowStockPowders = $powders->filter(fn ($p) => (float) $p->stock_kg < (float) $p->recipe_quantity_kg);
+                    @endphp
+                    @if ($lowStockPowders->isNotEmpty())
+                        <div class="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                            <span class="text-base shrink-0 mt-0.5">⚠️</span>
+                            <div>
+                                <span class="font-bold">Peringatan Ambang Batas Minimum:</span>
+                                <span>Terdapat <strong>{{ $lowStockPowders->count() }} serbuk kimia</strong> yang berada di bawah kebutuhan 1 batch formulasi lab (5.000 L). Segera jadwalkan pengadaan ulang (PO) sebelum stok habis.</span>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Summary Ringkasan --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="p-3 rounded-md bg-zinc-50 border border-zinc-200 flex flex-col justify-between">
@@ -88,10 +102,18 @@
                                         $stock = (float) $powder->stock_kg;
                                         $recipe = (float) $powder->recipe_quantity_kg;
                                         $isLow = $stock < $recipe;
+                                        $isOut = $stock <= 0;
                                     @endphp
-                                    <tr class="hover:bg-zinc-50/70 transition-colors">
+                                    <tr class="transition-colors {{ $isOut ? 'bg-red-50/50 hover:bg-red-50' : ($isLow ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-zinc-50/70') }}">
                                         <td class="px-3 py-2.5">
-                                            <div class="font-semibold text-zinc-900">{{ $powder->name }}</div>
+                                            <div class="font-semibold text-zinc-900 flex items-center gap-1.5">
+                                                <span>{{ $powder->name }}</span>
+                                                @if ($isOut)
+                                                    <span class="text-red-500 text-xs">⛔</span>
+                                                @elseif ($isLow)
+                                                    <span class="text-amber-500 text-xs">⚠️</span>
+                                                @endif
+                                            </div>
                                             <div class="text-[10px] font-mono text-zinc-400">{{ $powder->code }} • {{ $powder->notes }}</div>
                                         </td>
                                         <td class="px-3 py-2.5 text-right font-mono tabular-nums text-zinc-700 whitespace-nowrap">
@@ -104,17 +126,17 @@
                                             {{ number_format($stock, 2, ',', '.') }} Kg
                                         </td>
                                         <td class="px-3 py-2.5 text-center whitespace-nowrap">
-                                            @if ($stock <= 0)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
-                                                    Habis
+                                            @if ($isOut)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
+                                                    <span>⛔</span> Habis
                                                 </span>
                                             @elseif ($isLow)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                                                    &lt; 1 Batch
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                                    <span>⚠️</span> &lt; 1 Batch
                                                 </span>
                                             @else
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                    Tersedia
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    <span>✓</span> Tersedia
                                                 </span>
                                             @endif
                                         </td>

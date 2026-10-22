@@ -202,4 +202,56 @@ class StockReconciliationAndLabConversionTest extends TestCase
             ->call('close')
             ->assertSet('isOpen', false);
     }
+
+    public function test_copy_last_entry_populates_supplier_material_and_density(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->actingAs($admin);
+
+        $supplier = Supplier::first();
+        $material = Material::where('name', 'Pasir Palu')->first();
+
+        // Create a previous receive entry
+        $previous = MaterialReceive::create([
+            'receive_date' => now()->format('Y-m-d'),
+            'supplier_id' => $supplier->id,
+            'material_id' => $material->id,
+            'vehicle_no' => 'KT 8888 BB',
+            'ri_no' => 'RI-PREV-001',
+            'volume_m3' => 12.0,
+            'density_used' => 1450.0,
+            'total_weight_kg' => 17400.0,
+        ]);
+
+        Livewire::test(MaterialReceiveForm::class)
+            ->call('copyLastEntry')
+            ->assertSet('supplier_id', $supplier->id)
+            ->assertSet('material_id', $material->id)
+            ->assertSet('density', '1450')
+            ->assertSet('vehicle_no', 'KT 8888 BB');
+    }
+
+    public function test_low_stock_badge_triggers_when_chemical_powder_below_recipe_threshold(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->actingAs($admin);
+
+        // Set one powder to below 1 batch recipe
+        $powder = AdditivePowder::where('code', 'SNF_001')->first();
+        $this->assertNotNull($powder);
+        $powder->update([
+            'recipe_quantity_kg' => 750.0,
+            'stock_kg' => 200.0, // Below 750 kg
+        ]);
+
+        $this->assertTrue($powder->fresh()->isLowStock());
+
+        Livewire::test(MaterialReceiveForm::class)
+            ->assertSee('Menipis');
+
+        Livewire::test(AdditiveBreakdownModal::class)
+            ->dispatch('open-additive-modal')
+            ->assertSee('Peringatan Ambang Batas Minimum')
+            ->assertSee('< 1 Batch');
+    }
 }

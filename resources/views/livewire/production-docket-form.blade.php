@@ -194,30 +194,144 @@
                                 required
                             />
 
-                            {{-- Volume (m3) --}}
-                            <x-ui.input
-                                wire:model.live.debounce.250ms="volume_m3"
-                                label="Volume (m³)"
-                                name="volume_m3"
-                                type="text"
-                                placeholder="Contoh: 7.00"
-                                suffix="m³"
-                                mono
-                                required
-                            />
+                            {{-- Volume & Status Dispatch Armada --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:col-span-2">
+                                <x-ui.input
+                                    wire:model.live.debounce.250ms="volume_m3"
+                                    label="Volume (m³)"
+                                    name="volume_m3"
+                                    type="text"
+                                    placeholder="Contoh: 7.00"
+                                    suffix="m³"
+                                    mono
+                                    required
+                                />
+
+                                <x-ui.select
+                                    wire:model="delivery_status"
+                                    label="Status Dispatch Armada"
+                                    name="delivery_status"
+                                    required
+                                >
+                                    <option value="completed">✅ Selesai Bongkar (Default)</option>
+                                    <option value="loading">🔄 Antri Muat (Plant)</option>
+                                    <option value="in_transit">🚚 Dalam Perjalanan</option>
+                                    <option value="on_site">🏗️ Di Lokasi Proyek</option>
+                                </x-ui.select>
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Bagian 3: Komposisi Batching Aktual (Input Manual) --}}
+                    {{-- Bagian 3: Komposisi Batching Aktual --}}
                     <div class="pt-2 border-t border-zinc-100">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                                3. Komposisi Batching Aktual (Input Manual)
-                            </h3>
-                            <span class="text-xs text-zinc-500 font-mono">
-                                Otomatis memotong Stok Akhir Teoritis
-                            </span>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h3 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                                    3. Komposisi Batching Aktual
+                                </h3>
+                                <p class="text-[11px] text-zinc-500 font-mono">
+                                    Otomatis memotong Stok Akhir Teoritis
+                                </p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    wire:click="autoFillFromJobMix"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-800 transition-colors shadow-2xs cursor-pointer"
+                                    title="Hitung takaran agregat, semen, dan air otomatis dari resep mutu beton"
+                                >
+                                    <span>📋 Hitung dari Resep Job Mix</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="toggleMoistureCalculator"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded border transition-colors shadow-2xs cursor-pointer {{ $showMoistureCalculator ? 'border-sky-300 bg-sky-50 text-sky-900' : 'border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-800' }}"
+                                    title="Koreksi kadar air pasir dan split agar w/c ratio beton tetap presisi"
+                                >
+                                    <span>💧 Koreksi Kadar Air (Moisture)</span>
+                                </button>
+                            </div>
                         </div>
+
+                        {{-- Moisture Correction Calculator Widget --}}
+                        @if ($showMoistureCalculator)
+                            <div class="mb-4 p-4 rounded-lg bg-sky-50/70 border border-sky-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-base">💧</span>
+                                        <div>
+                                            <h4 class="text-xs font-bold text-sky-950 uppercase tracking-wider">Kalkulator Koreksi Kadar Air Agregat (Moisture Correction)</h4>
+                                            <p class="text-[11px] text-sky-800">Kompensasikan kadar air pada pasir dan split basah: air mixer otomatis dikurangi dan timbangan agregat basah disesuaikan.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        wire:click="toggleMoistureCalculator"
+                                        class="text-xs text-sky-700 hover:text-sky-900 font-semibold cursor-pointer"
+                                    >
+                                        Tutup ✕
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <x-ui.input
+                                        wire:model="moisture_pasir_palu"
+                                        label="Kadar Air Pasir Palu (%)"
+                                        name="moisture_pasir_palu"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="20"
+                                        placeholder="0.0"
+                                        suffix="%"
+                                        mono
+                                    />
+                                    <x-ui.input
+                                        wire:model="moisture_pasir_lokal"
+                                        label="Kadar Air Pasir Lokal (%)"
+                                        name="moisture_pasir_lokal"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="20"
+                                        placeholder="0.0"
+                                        suffix="%"
+                                        mono
+                                    />
+                                    <x-ui.input
+                                        wire:model="moisture_split"
+                                        label="Kadar Air Batu Split (%)"
+                                        name="moisture_split"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="10"
+                                        placeholder="0.0"
+                                        suffix="%"
+                                        mono
+                                    />
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-sky-200/60">
+                                    <div class="text-[11px] text-sky-900 font-medium">
+                                        @if ($moisture_correction_summary)
+                                            <span class="inline-flex items-center gap-1 font-semibold text-emerald-800">
+                                                <span>✓</span> {{ $moisture_correction_summary }}
+                                            </span>
+                                        @else
+                                            <span>*Isi % kadar air di atas, lalu klik tombol terapkan.</span>
+                                        @endif
+                                    </div>
+                                    <button
+                                        type="button"
+                                        wire:click="applyMoistureCorrection"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-sky-900 text-white hover:bg-sky-800 transition-colors cursor-pointer shadow-2xs whitespace-nowrap self-end sm:self-auto"
+                                    >
+                                        <span>💧 Terapkan Koreksi Kadar Air</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-lg bg-zinc-50 border border-zinc-200">
                             {{-- Semen --}}
@@ -502,6 +616,57 @@
             </div>
         </x-slot:action>
 
+        {{-- Mini Board Status Ritase Mixer (Dispatch Kanban / Status Pills) --}}
+        @php
+            $counts = $this->deliveryStatusCounts;
+        @endphp
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <button
+                type="button"
+                wire:click="setFilterDeliveryStatus('all')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-900 text-white border-zinc-900 shadow-2xs' : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50' }}"
+            >
+                <span>Semua Ritase</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'all' ? 'bg-zinc-700 text-white' : 'bg-zinc-100 text-zinc-700' }}">{{ $counts['all'] }}</span>
+            </button>
+
+            <button
+                type="button"
+                wire:click="setFilterDeliveryStatus('loading')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-amber-50/70 text-amber-900 border-amber-200 hover:bg-amber-100/70' }}"
+            >
+                <span>🔄 Antri Muat (Plant)</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'loading' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900' }}">{{ $counts['loading'] }}</span>
+            </button>
+
+            <button
+                type="button"
+                wire:click="setFilterDeliveryStatus('in_transit')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-blue-50/70 text-blue-900 border-blue-200 hover:bg-blue-100/70' }}"
+            >
+                <span>🚚 Dalam Perjalanan</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'in_transit' ? 'bg-blue-800 text-white' : 'bg-blue-200 text-blue-900' }}">{{ $counts['in_transit'] }}</span>
+            </button>
+
+            <button
+                type="button"
+                wire:click="setFilterDeliveryStatus('on_site')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-purple-50/70 text-purple-900 border-purple-200 hover:bg-purple-100/70' }}"
+            >
+                <span>🏗️ Di Lokasi Proyek</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'on_site' ? 'bg-purple-800 text-white' : 'bg-purple-200 text-purple-900' }}">{{ $counts['on_site'] }}</span>
+            </button>
+
+            <button
+                type="button"
+                wire:click="setFilterDeliveryStatus('completed')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200 hover:bg-emerald-100/70' }}"
+            >
+                <span>✅ Selesai Bongkar</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono {{ $filterDeliveryStatus === 'completed' ? 'bg-emerald-800 text-white' : 'bg-emerald-200 text-emerald-900' }}">{{ $counts['completed'] }}</span>
+            </button>
+        </div>
+
         @php
             $headers = [
                 ['label' => 'No', 'class' => 'w-12 text-center'],
@@ -512,6 +677,7 @@
                 ['label' => 'No. TM', 'class' => ''],
                 ['label' => 'Vol (m³)', 'class' => 'text-right'],
                 ['label' => 'Kumulatif (m³)', 'class' => 'text-right hidden md:table-cell'],
+                ['label' => 'Status Ritase', 'class' => 'whitespace-nowrap'],
                 ['label' => 'Operator', 'class' => 'hidden lg:table-cell'],
                 ['label' => 'Aksi', 'class' => 'text-right'],
             ];
@@ -571,6 +737,54 @@
                     {{-- Kumulatif --}}
                     <td class="px-4 py-3 text-xs font-mono tabular-nums text-right text-zinc-600 hidden md:table-cell">
                         {{ number_format((float) $d->daily_cumulative_m3, 2, ',', '.') }}
+                    </td>
+
+                    {{-- Status Ritase Dispatch --}}
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        @php
+                            $statusInfo = $d->delivery_status_info;
+                        @endphp
+                        <div class="inline-flex items-center gap-1">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold
+                                {{ $d->delivery_status === 'loading' ? 'bg-amber-100 text-amber-800 border border-amber-200' : '' }}
+                                {{ $d->delivery_status === 'in_transit' ? 'bg-blue-100 text-blue-800 border border-blue-200' : '' }}
+                                {{ $d->delivery_status === 'on_site' ? 'bg-purple-100 text-purple-800 border border-purple-200' : '' }}
+                                {{ $d->delivery_status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : '' }}
+                            ">
+                                <span>{{ $statusInfo['icon'] }}</span>
+                                <span>{{ $statusInfo['short'] }}</span>
+                            </span>
+
+                            {{-- Tombol Cepat Majukan Status --}}
+                            @if ($d->delivery_status === 'loading')
+                                <button
+                                    type="button"
+                                    wire:click="updateDeliveryStatus({{ $d->id }}, 'in_transit')"
+                                    class="p-1 rounded text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer text-xs"
+                                    title="Tandai: Jalan Menuju Proyek"
+                                >
+                                    ➔ 🚚
+                                </button>
+                            @elseif ($d->delivery_status === 'in_transit')
+                                <button
+                                    type="button"
+                                    wire:click="updateDeliveryStatus({{ $d->id }}, 'on_site')"
+                                    class="p-1 rounded text-zinc-400 hover:text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer text-xs"
+                                    title="Tandai: Tiba di Lokasi Proyek"
+                                >
+                                    ➔ 🏗️
+                                </button>
+                            @elseif ($d->delivery_status === 'on_site')
+                                <button
+                                    type="button"
+                                    wire:click="updateDeliveryStatus({{ $d->id }}, 'completed')"
+                                    class="p-1 rounded text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer text-xs"
+                                    title="Tandai: Selesai Bongkar"
+                                >
+                                    ➔ ✅
+                                </button>
+                            @endif
+                        </div>
                     </td>
 
                     {{-- Operator --}}
@@ -751,6 +965,19 @@
                                 mono
                                 required
                             />
+                            <div class="sm:col-span-2">
+                                <x-ui.select
+                                    wire:model="edit_delivery_status"
+                                    label="Status Ritase Dispatch *"
+                                    name="edit_delivery_status"
+                                    required
+                                >
+                                    <option value="completed">✅ Selesai Bongkar</option>
+                                    <option value="loading">🔄 Antri Muat (Plant)</option>
+                                    <option value="in_transit">🚚 Dalam Perjalanan</option>
+                                    <option value="on_site">🏗️ Di Lokasi Proyek</option>
+                                </x-ui.select>
+                            </div>
                         </div>
                     </div>
 

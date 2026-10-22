@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ExecutiveReportController;
 use App\Http\Controllers\MaterialReceivePrintController;
 use App\Http\Controllers\ProductionDocketPrintController;
 use App\Http\Controllers\PurchaseOrderPrintController;
@@ -64,6 +65,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', ExecutiveDashboard::class)
         ->middleware('role:admin,manajemen,demo')
         ->name('dashboard');
+
+    // Ekspor Laporan Rekap Bulanan Eksekutif (Excel All-in-One & PDF Summary)
+    Route::get('/executive-report/excel', [ExecutiveReportController::class, 'downloadAllInOneExcel'])
+        ->middleware('role:admin,manajemen,demo')
+        ->name('executive.report-excel');
+
+    Route::get('/executive-report/pdf', [ExecutiveReportController::class, 'downloadExecutivePdf'])
+        ->middleware('role:admin,manajemen,demo')
+        ->name('executive.report-pdf');
 
     // Sales Orders (Admin, Kasir Logistik, Demo)
     Route::get('/sales-orders', SalesOrderForm::class)

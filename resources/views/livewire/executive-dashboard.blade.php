@@ -54,6 +54,32 @@
                 @endfor
             </select>
 
+            {{-- 1-Click Export Actions --}}
+            <div class="flex items-center gap-1.5 pl-1 border-l border-zinc-200">
+                <a
+                    href="{{ route('executive.report-excel', ['year' => $selectedYear, 'month' => $selectedMonth]) }}"
+                    class="h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-medium shadow-2xs transition-colors"
+                    title="Ekspor Seluruh Rekapitulasi Bulanan ke Format Multi-Sheet Excel (Rekonsiliasi, Penerimaan, Produksi, PO)"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Excel All-in-One</span>
+                </a>
+
+                <a
+                    href="{{ route('executive.report-pdf', ['year' => $selectedYear, 'month' => $selectedMonth]) }}"
+                    target="_blank"
+                    class="h-9 inline-flex items-center gap-1.5 px-3 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-800 text-xs md:text-sm font-medium shadow-2xs transition-colors"
+                    title="Cetak Ringkasan Eksekutif dalam Format PDF Siap Print / Tanda Tangan"
+                >
+                    <svg class="w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>Ringkasan PDF</span>
+                </a>
+            </div>
+
             <div class="hidden sm:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 text-emerald-800 text-xs font-mono font-medium shadow-2xs">
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
